@@ -1,2 +1,2 @@
 # library-system
-Smart library app build django and js
+Smart library app (django and js)
