@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+{% block title %}{% if book %}Edit Book{% else %}Add Book{% endif %} — LibraryApp{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'library:admin_book_list' %}">Books</a></li>
+    <li class="breadcrumb-item active">{% if book %}Edit: {{ book.title }}{% else %}Add Book{% endif %}</li>
+  </ol>
+</nav>
+
+<h4 class="fw-bold mb-4">
+  {% if book %}<i class="fa-solid fa-pen me-2"></i>Edit Book
+  {% else %}<i class="fa-solid fa-plus me-2"></i>Add Book{% endif %}
+</h4>
+
+<div class="card border-0 shadow-sm" style="max-width:720px">
+  <div class="card-body p-4">
+    <form id="bookForm"
+          method="post"
+          action="{% if book %}{% url 'library:admin_book_edit' book.id %}{% else %}{% url 'library:admin_book_create' %}{% endif %}"
+          enctype="multipart/form-data"
+          novalidate>
+      {% csrf_token %}
+
+      <!-- Title -->
+      <div class="mb-3">
+        <label for="title" class="form-label fw-semibold">Title *</label>
+        <input type="text" class="form-control" id="title" name="title"
+               value="{{ book.title|default:'' }}" placeholder="Book title" required/>
+        <div class="invalid-feedback">Title is required.</div>
+      </div>
+
+      <!-- Author + Category with inline-create buttons -->
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label for="author_id" class="form-label fw-semibold mb-0">Author *</label>
+            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none"
+                    data-bs-toggle="modal" data-bs-target="#authorModal">
+              <i class="fa-solid fa-plus me-1"></i>New author
+            </button>
+          </div>
+          <select class="form-select" id="author_id" name="author_id" required>
+            <option value="">Select author…</option>
+            {% for a in authors %}
+              <option value="{{ a.id }}" {% if book and book.author_id == a.id %}selected{% endif %}>
+                {{ a.name }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="invalid-feedback">Please select an author.</div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label for="category_id" class="form-label fw-semibold mb-0">Category *</label>
+            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none"
+                    data-bs-toggle="modal" data-bs-target="#categoryModal">
+              <i class="fa-solid fa-plus me-1"></i>New category
+            </button>
+          </div>
+          <select class="form-select" id="category_id" name="category_id" required>
+            <option value="">Select category…</option>
+            {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if book and book.category_id == cat.id %}selected{% endif %}>
+                {{ cat.name }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="invalid-feedback">Please select a category.</div>
+        </div>
+      </div>
+
+      <!-- ISBN + Publisher -->
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="ISBN" class="form-label fw-semibold">ISBN *</label>
+          <input type="text" class="form-control" id="ISBN" name="ISBN"
+                 value="{{ book.ISBN|default:'' }}" placeholder="978-3-16-148410-0" required/>
+          <div class="invalid-feedback">ISBN is required.</div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="publisher" class="form-label fw-semibold">Publisher *</label>
+          <input type="text" class="form-control" id="publisher" name="publisher"
+                 value="{{ book.publisher|default:'' }}" placeholder="Publisher name" required/>
+          <div class="invalid-feedback">Publisher is required.</div>
+        </div>
+      </div>
+
+      <!-- Total copies -->
+      <div class="mb-3" style="max-width:200px">
+        <label for="total_copies" class="form-label fw-semibold">Total copies *</label>
+        <input type="number" class="form-control" id="total_copies" name="total_copies"
+               value="{{ book.total_copies|default:'1' }}" min="1" required/>
+        {% if book %}
+          <div class="form-text">Currently {{ book.available_copies }} available.</div>
+        {% endif %}
+        <div class="invalid-feedback">Must be at least 1.</div>
+      </div>
+
+      <!-- Summary -->
+      <div class="mb-3">
+        <label for="summary" class="form-label fw-semibold">Summary</label>
+        <textarea class="form-control" id="summary" name="summary" rows="3"
+                  placeholder="Brief description…">{{ book.summary|default:'' }}</textarea>
+      </div>
+
+      <!-- Cover image -->
+      <div class="mb-4">
+        <label for="image" class="form-label fw-semibold">Cover image</label>
+        <div class="mb-2">
+          <img id="imagePreview"
+            src="{% if book and book.image %}{{ book.image.url }}{% else %}{% endif %}"
+            class="{% if not book or not book.image %}d-none{% endif %}"
+            style="height:100px;border-radius:6px;object-fit:cover"/>
+        </div>
+        <input type="file" class="form-control" id="image" name="image"
+               accept="image/*" data-preview="#imagePreview"/>
+        <div class="form-text">Leave blank to keep current image.</div>
+      </div>
+
+      <!-- Submit -->
+      <div class="d-flex gap-2 justify-content-end">
+        <a href="{% url 'library:admin_book_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-dark">
+          <i class="fa-solid fa-floppy-disk me-1"></i>
+          {% if book %}Save Changes{% else %}Add Book{% endif %}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+
+<!-- ── Author creation modal ──────────────────────────────── -->
+<div class="modal fade" id="authorModal" tabindex="-1" aria-labelledby="authorModalLabel" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="authorModalLabel">
+          <i class="fa-solid fa-pen-nib me-2"></i>Add New Author
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="authorError" class="alert alert-danger d-none"></div>
+        <label for="newAuthorName" class="form-label fw-semibold">Author name *</label>
+        <input type="text" class="form-control" id="newAuthorName"
+               placeholder="e.g. George Orwell" autocomplete="off"/>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-dark" id="saveAuthorBtn">
+          <i class="fa-solid fa-floppy-disk me-1"></i>Save Author
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Category creation modal ────────────────────────────── -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="categoryModalLabel">
+          <i class="fa-solid fa-tag me-2"></i>Add New Category
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="categoryError" class="alert alert-danger d-none"></div>
+        <label for="newCategoryName" class="form-label fw-semibold">Category name *</label>
+        <input type="text" class="form-control" id="newCategoryName"
+               placeholder="e.g. Science Fiction" autocomplete="off"/>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-dark" id="saveCategoryBtn">
+          <i class="fa-solid fa-floppy-disk me-1"></i>Save Category
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Pass Django URL endpoints to JS without hardcoding paths
+window.LIBRARY_URLS = {
+  authorCreateJson:   "{% url 'library:author_create_json' %}",
+  categoryCreateJson: "{% url 'library:category_create_json' %}",
+};
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block title %}Categories — LibraryApp{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="section-header">
+    <h1>Categories</h1>
+    <p style="color:var(--text-muted)">Browse books by genre</p>
+  </div>
+
+  {% if categories %}
+    <div class="grid-3">
+      {% for cat in categories %}
+        <a href="{% url 'library:book_list' %}?category={{ cat.id }}"
+           class="card"
+           style="display:flex;align-items:center;justify-content:space-between;padding:1.3rem 1.5rem;color:inherit">
+          <div>
+            <h3 style="margin-bottom:.25rem">{{ cat.name }}</h3>
+            <p style="font-size:.82rem;color:var(--text-muted)">
+              {{ cat.book_count }} book{{ cat.book_count|pluralize }}
+            </p>
+          </div>
+          <span style="background:var(--navy);color:var(--gold);font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            {{ cat.name|first|upper }}
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <i class="fa-solid fa-tags"></i>
+      <p>No categories yet.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

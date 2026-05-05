@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block title %}{{ book.title }} — LibraryApp{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'library:book_list' %}">Books</a></li>
+    <li class="breadcrumb-item active">{{ book.title }}</li>
+  </ol>
+</nav>
+
+<div class="row g-4">
+  <!-- Cover -->
+  <div class="col-md-3 text-center">
+    <img src="{{ book.image.url }}" alt="{{ book.title }}"
+         class="img-fluid rounded shadow-sm"
+         style="max-height:320px;width:100%;object-fit:cover"/>
+  </div>
+
+  <!-- Details -->
+  <div class="col-md-9">
+    <h3 class="fw-bold mb-1">{{ book.title }}</h3>
+    <p class="text-muted mb-2">
+      by <a href="{% url 'library:author_detail' book.author.id %}" class="text-decoration-none fw-semibold">
+        {{ book.author.name }}
+      </a>
+    </p>
+
+    <div class="mb-3">
+      <span class="badge bg-secondary me-1">{{ book.category.name }}</span>
+      {% if book.is_available %}
+        <span class="badge badge-available"><i class="fa-solid fa-circle-check me-1"></i>{{ book.available_copies }} available</span>
+      {% else %}
+        <span class="badge badge-unavailable"><i class="fa-solid fa-circle-xmark me-1"></i>Unavailable</span>
+      {% endif %}
+    </div>
+
+    <!-- Meta -->
+    <table class="table table-sm table-borderless w-auto mb-3">
+      <tr><th class="text-muted pe-4">ISBN</th><td>{{ book.ISBN }}</td></tr>
+      <tr><th class="text-muted pe-4">Publisher</th><td>{{ book.publisher }}</td></tr>
+      <tr><th class="text-muted pe-4">Total copies</th><td>{{ book.total_copies }}</td></tr>
+      <tr><th class="text-muted pe-4">Added</th><td>{{ book.created_at|date:"M d, Y" }}</td></tr>
+    </table>
+
+    {% if book.summary %}
+      <p class="mb-4">{{ book.summary }}</p>
+    {% endif %}
+
+    <!-- Actions -->
+    {% if user.is_authenticated and user.is_member %}
+
+      {% if user_borrow %}
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge bg-warning text-dark fs-6">
+            <i class="fa-solid fa-bookmark me-1"></i>You have this borrowed — due {{ user_borrow.due_date|date:"M d, Y" }}
+          </span>
+          <form method="post" action="{% url 'library:return_book' user_borrow.id %}"
+                data-confirm="Return Book|Return '{{ book.title }}'?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+              <i class="fa-solid fa-rotate-left me-1"></i>Return
+            </button>
+          </form>
+        </div>
+
+      {% elif user_reservation %}
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge bg-info text-dark fs-6">
+            <i class="fa-solid fa-clock me-1"></i>You are in the queue
+          </span>
+          <form method="post" action="{% url 'library:cancel_reservation' user_reservation.id %}"
+                data-confirm="Cancel Reservation|Remove yourself from the queue?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+              <i class="fa-solid fa-xmark me-1"></i>Cancel reservation
+            </button>
+          </form>
+        </div>
+
+      {% elif book.is_available %}
+        <form method="post" action="{% url 'library:borrow_book' book.id %}"
+              class="d-flex align-items-end gap-2" id="borrowForm">
+          {% csrf_token %}
+          <div>
+            <label for="quantity" class="form-label fw-semibold small mb-1">Quantity</label>
+            <input type="number" class="form-control" id="quantity" name="quantity"
+                   value="1" min="1" max="{{ book.available_copies }}" style="width:90px"/>
+            <div class="invalid-feedback" id="qtyError">Invalid quantity.</div>
+          </div>
+          <button type="submit" class="btn btn-dark mb-0" id="borrowBtn">
+            <i class="fa-solid fa-book me-1"></i>Borrow
+          </button>
+        </form>
+
+      {% else %}
+        <form method="post" action="{% url 'library:reserve_book' book.id %}"
+              data-confirm="Reserve Book|Join the waiting queue for '{{ book.title }}'?|Join Queue|btn btn-primary">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-clock me-1"></i>Reserve (join queue)
+          </button>
+        </form>
+      {% endif %}
+
+    {% elif not user.is_authenticated %}
+      <div class="alert alert-info d-inline-block">
+        <a href="{% url 'library:login' %}?next={{ request.path }}" class="fw-bold">Sign in</a> to borrow or reserve this book.
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

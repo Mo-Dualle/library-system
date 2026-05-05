@@ -1,0 +1,231 @@
+{% extends "layout.html" %}
+{% block title %}{{ member.get_full_name }} — LibraryApp{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'library:admin_member_list' %}">Members</a></li>
+    <li class="breadcrumb-item active">{{ member.get_full_name }}</li>
+  </ol>
+</nav>
+
+<!-- Profile card -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-4">
+    <div class="row align-items-center g-4">
+
+      <!-- Avatar + name -->
+      <div class="col-auto">
+        <div class="avatar-circle" style="width:72px;height:72px;font-size:1.8rem">
+          {{ member.first_name|first|upper }}
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+          <h4 class="fw-bold mb-0">{{ member.get_full_name }}</h4>
+          {% if member.is_active %}
+            <span class="badge badge-available">Active</span>
+          {% else %}
+            <span class="badge badge-unavailable">Disabled</span>
+          {% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-3 text-muted" style="font-size:.875rem">
+          <span><i class="fa-solid fa-at me-1"></i>{{ member.username }}</span>
+          <span><i class="fa-solid fa-envelope me-1"></i>{{ member.email }}</span>
+          <span><i class="fa-solid fa-phone me-1"></i>{{ member.phone|default:"—" }}</span>
+          <span><i class="fa-solid fa-venus-mars me-1"></i>{{ member.gender|default:"—"|title }}</span>
+          <span><i class="fa-solid fa-calendar me-1"></i>Joined {{ member.date_joined|date:"M d, Y" }}</span>
+        </div>
+      </div>
+
+      <!-- Toggle action -->
+      <div class="col-auto">
+        <form method="post" action="{% url 'library:admin_member_toggle' member.id %}"
+              data-confirm="{% if member.is_active %}Disable Account|Disable {{ member.get_full_name }}'s account?{% else %}Enable Account|Re-enable this account?{% endif %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="btn {% if member.is_active %}btn-outline-danger{% else %}btn-success{% endif %}">
+            {% if member.is_active %}
+              <i class="fa-solid fa-ban me-1"></i>Disable Account
+            {% else %}
+              <i class="fa-solid fa-circle-check me-1"></i>Enable Account
+            {% endif %}
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Summary stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="h3 fw-bold text-dark mb-0">{{ borrows.count }}</div>
+      <small class="text-muted">Total Borrows</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="h3 fw-bold text-dark mb-0">
+        {{ borrows.count }}
+      </div>
+      <small class="text-muted">Reservations</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3 {% if fines.count %}border-danger{% endif %}">
+      <div class="h3 fw-bold {% if fines.count %}text-danger{% else %}text-dark{% endif %} mb-0">
+        {{ fines.count }}
+      </div>
+      <small class="text-muted">Fines</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="h3 fw-bold text-dark mb-0">{{ reservations.count }}</div>
+      <small class="text-muted">Reservations</small>
+    </div>
+  </div>
+</div>
+
+<!-- Borrow History -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold"><i class="fa-solid fa-book me-2"></i>Borrow History</span>
+    <span class="badge bg-secondary">{{ borrows.count }}</span>
+  </div>
+  {% if borrows %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Book</th>
+            <th>Qty</th>
+            <th>Borrowed</th>
+            <th>Due</th>
+            <th>Returned</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in borrows %}
+            <tr>
+              <td class="fw-semibold">{{ b.book.title }}</td>
+              <td>{{ b.quantity }}</td>
+              <td>{{ b.start_date|date:"M d, Y" }}</td>
+              <td>{{ b.due_date|date:"M d, Y" }}</td>
+              <td>{{ b.return_date|date:"M d, Y"|default:"—" }}</td>
+              <td>
+                {% if b.status == 'returned' %}
+                  <span class="badge bg-secondary">Returned</span>
+                {% elif b.status == 'overdue' %}
+                  <span class="badge bg-danger">Overdue</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">Borrowed</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body text-center py-4 text-muted">
+      <i class="fa-solid fa-book-open fa-2x mb-2 d-block"></i>
+      No borrow history.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Fines -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold"><i class="fa-solid fa-triangle-exclamation me-2"></i>Fines</span>
+    <span class="badge {% if fines.count %}bg-danger{% else %}bg-secondary{% endif %}">{{ fines.count }}</span>
+  </div>
+  {% if fines %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Book</th>
+            <th>Amount Due</th>
+            <th>Amount Paid</th>
+            <th>Settled</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fine in fines %}
+            <tr>
+              <td class="fw-semibold">{{ fine.borrow.book.title }}</td>
+              <td class="text-danger fw-bold">${{ fine.amount_due }}</td>
+              <td>${{ fine.amount_paid }}</td>
+              <td>
+                {% if fine.is_settled %}
+                  <span class="badge badge-available"><i class="fa-solid fa-check me-1"></i>Settled</span>
+                {% else %}
+                  <span class="badge badge-unavailable"><i class="fa-solid fa-xmark me-1"></i>Unpaid</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body text-center py-4 text-muted">
+      <i class="fa-solid fa-circle-check fa-2x mb-2 d-block text-success"></i>
+      No fines on record.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Reservations -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold"><i class="fa-solid fa-clock me-2"></i>Reservations</span>
+    <span class="badge bg-secondary">{{ reservations.count }}</span>
+  </div>
+  {% if reservations %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Book</th>
+            <th>Reserved on</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for res in reservations %}
+            <tr>
+              <td class="fw-semibold">{{ res.book.title }}</td>
+              <td>{{ res.reserved_on|date:"M d, Y" }}</td>
+              <td>
+                {% if res.status == 'pending' %}
+                  <span class="badge bg-info text-dark">Pending</span>
+                {% elif res.status == 'fulfilled' %}
+                  <span class="badge badge-available">Fulfilled</span>
+                {% else %}
+                  <span class="badge bg-secondary">Cancelled</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card-body text-center py-4 text-muted">
+      <i class="fa-solid fa-clock fa-2x mb-2 d-block"></i>
+      No reservations.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

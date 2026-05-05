@@ -1,0 +1,204 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard — LibraryApp{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="fw-bold mb-0">My Dashboard</h4>
+    <small class="text-muted">Welcome back, <strong>{{ user.first_name }}</strong></small>
+  </div>
+  <a href="{% url 'library:book_list' %}" class="btn btn-dark btn-sm">
+    <i class="fa-solid fa-magnifying-glass me-1"></i>Browse Books
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="h2 fw-bold text-dark mb-0">{{ active_borrows.count }}</div>
+      <small class="text-muted">Active Borrows</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3 {% if overdue_count %}border-danger{% endif %}">
+      <div class="h2 fw-bold {% if overdue_count %}text-danger{% else %}text-dark{% endif %} mb-0">{{ overdue_count }}</div>
+      <small class="text-muted">Overdue</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="h2 fw-bold text-dark mb-0">{{ reservations.count }}</div>
+      <small class="text-muted">Reservations</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3 {% if unpaid_fines.count %}border-danger{% endif %}">
+      <div class="h2 fw-bold {% if unpaid_fines.count %}text-danger{% else %}text-dark{% endif %} mb-0">{{ unpaid_fines.count }}</div>
+      <small class="text-muted">Unpaid Fines</small>
+    </div>
+  </div>
+</div>
+
+<!-- Reading session -->
+{% if active_session %}
+  <div class="alert alert-info d-flex align-items-center justify-content-between mb-4">
+    <span>
+      <i class="fa-solid fa-book-open-reader me-2"></i>
+      Active reading session — started {{ active_session.time_in|time:"H:i" }}
+      <strong id="reading-timer" data-start="{{ active_session.time_in.isoformat }}"></strong>
+    </span>
+    <form method="post" action="{% url 'library:reading_check_out' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-outline-dark">
+        <i class="fa-solid fa-right-from-bracket me-1"></i>Check Out
+      </button>
+    </form>
+  </div>
+{% else %}
+  <form method="post" action="{% url 'library:reading_check_in' %}" class="mb-4">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-dark btn-sm">
+      <i class="fa-solid fa-book-open-reader me-1"></i>Start Reading Session
+    </button>
+  </form>
+{% endif %}
+
+<!-- Active Borrows -->
+<h5 class="fw-semibold mb-3"><i class="fa-solid fa-book me-2 text-secondary"></i>Active Borrows</h5>
+{% if active_borrows %}
+  <div class="table-responsive mb-4">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+        <tr><th>Book</th><th>Borrowed</th><th>Due date</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for borrow in active_borrows %}
+          <tr>
+            <td>
+              <a href="{% url 'library:book_detail' borrow.book.id %}" class="fw-semibold text-decoration-none text-dark">
+                {{ borrow.book.title }}
+              </a>
+              <div class="text-muted small">{{ borrow.book.author.name }}</div>
+            </td>
+            <td>{{ borrow.start_date|date:"M d, Y" }}</td>
+            <td>
+              {{ borrow.due_date|date:"M d, Y" }}
+              {% if borrow.is_overdue %}
+                <div class="text-danger small fw-bold">OVERDUE</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if borrow.status == 'overdue' %}
+                <span class="badge bg-danger">Overdue</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Borrowed</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="{% url 'library:return_book' borrow.id %}"
+                    data-confirm="Return Book|Return '{{ borrow.book.title }}'?">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                  <i class="fa-solid fa-rotate-left me-1"></i>Return
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted mb-4">No active borrows.</p>
+{% endif %}
+
+<!-- Reservations -->
+<h5 class="fw-semibold mb-3"><i class="fa-solid fa-clock me-2 text-secondary"></i>Reservations</h5>
+{% if reservations %}
+  <div class="table-responsive mb-4">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+        <tr><th>Book</th><th>Reserved on</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for res in reservations %}
+          <tr>
+            <td>
+              <a href="{% url 'library:book_detail' res.book.id %}" class="fw-semibold text-decoration-none text-dark">
+                {{ res.book.title }}
+              </a>
+            </td>
+            <td>{{ res.reserved_on|date:"M d, Y" }}</td>
+            <td><span class="badge bg-info text-dark">Pending</span></td>
+            <td>
+              <form method="post" action="{% url 'library:cancel_reservation' res.id %}"
+                    data-confirm="Cancel Reservation|Remove yourself from the queue for '{{ res.book.title }}'?">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                  <i class="fa-solid fa-xmark me-1"></i>Cancel
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted mb-4">No pending reservations.</p>
+{% endif %}
+
+<!-- Unpaid Fines -->
+{% if unpaid_fines %}
+  <h5 class="fw-semibold mb-3 text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>Unpaid Fines</h5>
+  <div class="table-responsive mb-4">
+    <table class="table table-hover align-middle">
+      <thead class="table-danger">
+        <tr><th>Book</th><th>Amount Due</th><th>Amount Paid</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for fine in unpaid_fines %}
+          <tr>
+            <td class="fw-semibold">{{ fine.borrow.book.title }}</td>
+            <td class="text-danger fw-bold">${{ fine.amount_due }}</td>
+            <td>${{ fine.amount_paid }}</td>
+            <td>
+              <form method="post" action="{% url 'library:pay_fine' fine.id %}"
+                    data-confirm="Pay Fine|Pay ${{ fine.amount_due }} for '{{ fine.borrow.book.title }}'?|Pay Now|btn btn-success">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success">
+                  <i class="fa-solid fa-credit-card me-1"></i>Pay Fine
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
+<!-- Reading Sessions -->
+{% if reading_sessions %}
+  <h5 class="fw-semibold mb-3"><i class="fa-solid fa-book-open-reader me-2 text-secondary"></i>Recent Reading Sessions</h5>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+        <tr><th>Date</th><th>Check-in</th><th>Check-out</th><th>Duration</th></tr>
+      </thead>
+      <tbody>
+        {% for session in reading_sessions %}
+          <tr>
+            <td>{{ session.date|date:"M d, Y" }}</td>
+            <td>{{ session.time_in|time:"H:i" }}</td>
+            <td>{% if session.time_out %}{{ session.time_out|time:"H:i" }}{% else %}<span class="badge bg-info text-dark">Active</span>{% endif %}</td>
+            <td>{% if session.duration_minutes %}{{ session.duration_minutes }} min{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
+{% endblock %}

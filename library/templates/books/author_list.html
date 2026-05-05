@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+{% block title %}Authors — LibraryApp{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="section-header">
+    <h1>Authors</h1>
+    <p style="color:var(--text-muted)">{{ page_obj.paginator.count }} author{{ page_obj.paginator.count|pluralize }}</p>
+  </div>
+
+  <!-- Search -->
+  <form method="get" action="{% url 'library:author_list' %}" class="search-bar">
+    <input class="form-input" type="search" name="q" value="{{ query }}" placeholder="Search authors…" />
+    <button class="btn btn--primary" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+    {% if query %}
+      <a href="{% url 'library:author_list' %}" class="btn btn--ghost"><i class="fa-solid fa-xmark"></i> Clear</a>
+    {% endif %}
+  </form>
+
+  {% if page_obj %}
+    <div class="grid-2">
+      {% for author in page_obj %}
+        <a href="{% url 'library:author_detail' author.id %}" class="card" style="display:flex;align-items:center;gap:1rem;padding:1.2rem;color:inherit">
+          <div style="width:52px;height:52px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold);font-size:1.3rem;font-family:'Playfair Display',serif;font-weight:700">
+            {{ author.name|first|upper }}
+          </div>
+          <div>
+            <h3 style="font-size:1rem;margin-bottom:.2rem">{{ author.name }}</h3>
+            <p style="font-size:.8rem;color:var(--text-muted)">Added {{ author.created_at|date:"M Y" }}</p>
+          </div>
+          <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:var(--text-muted);font-size:.8rem"></i>
+        </a>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+      <nav class="pagination" aria-label="Author pages">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}&q={{ query }}"><i class="fa-solid fa-chevron-left"></i></a>
+        {% else %}
+          <span class="disabled"><i class="fa-solid fa-chevron-left"></i></span>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+            <span class="current">{{ num }}</span>
+          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <a href="?page={{ num }}&q={{ query }}">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}&q={{ query }}"><i class="fa-solid fa-chevron-right"></i></a>
+        {% else %}
+          <span class="disabled"><i class="fa-solid fa-chevron-right"></i></span>
+        {% endif %}
+      </nav>
+    {% endif %}
+
+  {% else %}
+    <div class="empty">
+      <i class="fa-solid fa-pen-nib"></i>
+      <p>No authors found.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
