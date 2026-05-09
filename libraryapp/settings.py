@@ -88,10 +88,10 @@ LOGOUT_REDIRECT_URL = '/login/'
 DATABASES = {
     'default': {
         'ENGINE':   'django.db.backends.postgresql',
-        'NAME':     os.environ.get('DB_NAME',     'library_system'),
-        'USER':     os.environ.get('DB_USER',     'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'duran123'),
-        'HOST':     os.environ.get('DB_HOST',     'localhost'),
+        'NAME':     os.environ.get('DB_NAME',     'library_db_nbu8'),
+        'USER':     os.environ.get('DB_USER',     'library_db_nbu8_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'eY5c1YZxUGa3wtY6UnKr77JqDjXdcjFC'),
+        'HOST':     os.environ.get('DB_HOST',     'dpg-d7vh786gvqtc73cmhmn0-a'),
         'PORT':     os.environ.get('DB_PORT',     '5432'),
         'OPTIONS': {
             # Keep connections alive for up to 60 s — reduces overhead
