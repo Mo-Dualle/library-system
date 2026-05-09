@@ -77,6 +77,31 @@ function initNavbar() {
 // Confirm modal — intercept forms with data-confirm="Title|Body"
 // ===========================================================================
 function initConfirmModal() {
+  /*
+   * XSS-safe confirm modal.
+   *
+   * Uses SEPARATE data attributes instead of a pipe-delimited string so that
+   * user-controlled values (book titles, member names) can never corrupt the
+   * okLabel or okClass slots.
+   *
+   * Attributes read from the form element:
+   *   data-confirm-title  — modal heading          (default: "Are you sure?")
+   *   data-confirm-body   — modal body text        (default: "")
+   *   data-confirm-ok     — confirm button label   (default: "Confirm")
+   *   data-confirm-class  — confirm button classes (default: "btn btn-danger")
+   *
+   * All values are written via .textContent — never innerHTML.
+   * okClass is validated against an allowlist so arbitrary strings cannot
+   * reach className even in the unlikely event a value is injected.
+   */
+  const ALLOWED_BTN_CLASSES = new Set([
+    "btn btn-danger",
+    "btn btn-success",
+    "btn btn-primary",
+    "btn btn-warning",
+    "btn btn-dark",
+  ]);
+
   const html = `
     <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
@@ -103,17 +128,39 @@ function initConfirmModal() {
 
   document.addEventListener("submit", (e) => {
     const form = e.target;
-    if (!form.dataset.confirm) return;
+    // Support both old pipe format (data-confirm) and new separate attributes
+    const hasOld = !!form.dataset.confirm;
+    const hasNew = !!form.dataset.confirmTitle;
+    if (!hasOld && !hasNew) return;
     e.preventDefault();
 
-    const [title = "Are you sure?", body = "", okLabel = "Confirm", okCls = "btn btn-danger"] =
-      form.dataset.confirm.split("|");
+    let title, body, okLabel, okCls;
 
+    if (hasNew) {
+      // Preferred: separate attributes — no parsing, no injection surface
+      title   = form.dataset.confirmTitle || "Are you sure?";
+      body    = form.dataset.confirmBody  || "";
+      okLabel = form.dataset.confirmOk    || "Confirm";
+      okCls   = form.dataset.confirmClass || "btn btn-danger";
+    } else {
+      // Legacy pipe format — still supported but body may be truncated if
+      // the title/body contained pipe characters (logic bug, not XSS)
+      const parts = form.dataset.confirm.split("|");
+      title   = parts[0] || "Are you sure?";
+      body    = parts[1] || "";
+      okLabel = parts[2] || "Confirm";
+      okCls   = parts[3] || "btn btn-danger";
+    }
+
+    // Write text-only — never innerHTML
     titleEl.textContent = title;
     bodyEl.textContent  = body;
-    okBtn.className     = okCls || "btn btn-danger";
     okBtn.textContent   = okLabel;
-    pending             = form;
+
+    // Allowlist className to prevent CSS injection
+    okBtn.className = ALLOWED_BTN_CLASSES.has(okCls) ? okCls : "btn btn-danger";
+
+    pending = form;
     modal.show();
   });
 
@@ -121,6 +168,7 @@ function initConfirmModal() {
     modal.hide();
     if (pending) {
       pending.removeAttribute("data-confirm");
+      pending.removeAttribute("data-confirm-title");
       pending.submit();
     }
   });
@@ -131,19 +179,27 @@ function initConfirmModal() {
 // Loading state — spinner on submit button
 // ===========================================================================
 function initLoadingStates() {
+  /*
+   * XSS fix: store/restore the button label using a data attribute
+   * (btn.dataset.originalLabel) instead of btn.innerHTML.
+   * The spinner is injected as a hardcoded string — no user data involved.
+   */
   document.addEventListener("submit", (e) => {
     const form = e.target;
-    if (form.dataset.confirm) return;          // confirm modal handles these
+    if (form.dataset.confirm || form.dataset.confirmTitle) return;
     const btn = form.querySelector('[type="submit"]');
     if (!btn || btn.dataset.noLoading) return;
 
-    const original = btn.innerHTML;
+    // Save current text label (textContent only — no HTML)
+    btn.dataset.originalLabel = btn.textContent.trim();
     btn.disabled  = true;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span>Processing…`;
+    // Hardcoded spinner — never touches user data
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Processing\u2026';
 
     window.addEventListener("pageshow", () => {
-      btn.disabled  = false;
-      btn.innerHTML = original;
+      btn.disabled     = false;
+      btn.textContent  = btn.dataset.originalLabel || "Submit";
+      delete btn.dataset.originalLabel;
     }, { once: true });
   });
 }
@@ -464,10 +520,76 @@ function initReadingTimer() {
 }
 
 
+
+// ===========================================================================
+// Navigation — NProgress top bar + page exit/entry handling
+// ===========================================================================
+function initNavigation() {
+  /*
+   * Triggers NProgress on every navigation that causes a full page load.
+   * Skips:
+   *   - Same-page anchor links  (#section)
+   *   - External links          (different origin)
+   *   - Links with target       (target="_blank")
+   *   - Download links          (download attribute)
+   *   - javascript: / mailto: / tel: hrefs
+   *   - Links already handled by fetch (modal creation buttons)
+   *
+   * NProgress is stopped by the pageshow event (fires even on bfcache restore).
+   */
+
+  if (typeof NProgress === "undefined") return;
+
+  NProgress.configure({ showSpinner: false, trickleSpeed: 80 });
+
+  function shouldIntercept(anchor) {
+    if (!anchor) return false;
+    const href = anchor.getAttribute("href") || "";
+    if (!href || href.startsWith("#"))      return false;   // anchor-only
+    if (href.startsWith("javascript:"))     return false;
+    if (href.startsWith("mailto:"))         return false;
+    if (href.startsWith("tel:"))            return false;
+    if (anchor.hasAttribute("download"))    return false;
+    if (anchor.target && anchor.target !== "_self") return false;
+    // External link
+    try {
+      const url = new URL(href, location.origin);
+      if (url.origin !== location.origin)   return false;
+    } catch (_) {
+      return false;
+    }
+    return true;
+  }
+
+  // Intercept all qualifying link clicks
+  document.addEventListener("click", (e) => {
+    const anchor = e.target.closest("a");
+    if (!anchor || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    if (!shouldIntercept(anchor)) return;
+    NProgress.start();
+  });
+
+  // Intercept form submits (page-navigating forms only — not fetch forms)
+  document.addEventListener("submit", (e) => {
+    const form = e.target;
+    // Skip forms intercepted by confirm modal or fetch (inline creation)
+    if (form.dataset.confirmTitle || form.dataset.confirm) return;
+    if (form.id === "bookForm" || form.id === "authorForm" || form.id === "categoryForm") return;
+    NProgress.start();
+  });
+
+  // Stop progress when page is fully shown (handles bfcache too)
+  window.addEventListener("pageshow", () => NProgress.done());
+
+  // Handle browser back/forward — NProgress may still be running
+  window.addEventListener("popstate", () => NProgress.done());
+}
+
 // ===========================================================================
 // Boot
 // ===========================================================================
 document.addEventListener("DOMContentLoaded", () => {
+  initNavigation();   // must run first — starts NProgress before other inits
   initMessages();
   initNavbar();
   initConfirmModal();

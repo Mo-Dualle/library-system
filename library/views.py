@@ -1,6 +1,6 @@
 """
 Library System — Views
-All redirect() calls use the 'library:' namespace (app_name = 'library').
+All redirect() calls use the 'library:' namespace (app_name = 'library'). landing_view
 """
 
 import datetime
@@ -14,6 +14,7 @@ from django.core.paginator import Paginator
 from django.db import transaction                          # Bug fix #3: removed unused 'models'
 from django.db.models import Count, F, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.html import escape
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_http_methods
 
@@ -62,20 +63,56 @@ def _create_fine_if_overdue(borrow, today):
 
 
 def _fulfil_next_reservation(book):
-    """Mark the oldest PENDING reservation FULFILLED (FIFO queue)."""
+    """
+    FIFO reservation queue processor.
+
+    When a copy becomes available after a return:
+      1. Find the oldest PENDING reservation for this book.
+      2. Atomically claim one copy (prevents race conditions).
+      3. Auto-create a Borrow record  → reservation-to-borrow automation.
+      4. Mark the reservation FULFILLED.
+      5. Log notification (replace logger line with email/push in production).
+
+    Returns the newly created Borrow or None if no reservation existed.
+    """
     pending = (
         Reservation.objects
         .filter(book=book, status=Reservation.Status.PENDING)
-        .order_by("reserved_on")
+        .order_by("reserved_on")          # FIFO: oldest first
         .select_related("member")
         .first()
     )
     if not pending:
-        return
+        return None
+
+    # Atomically claim one copy — if another request grabbed it first, bail out
+    claimed = (
+        Book.objects
+        .filter(pk=book.pk, available_copies__gte=1)
+        .update(available_copies=F("available_copies") - 1)
+    )
+    if not claimed:
+        # Race condition: no copy left — leave reservation pending
+        return None
+
+    today  = datetime.date.today()
+    borrow = Borrow.objects.create(
+        book       = book,
+        member     = pending.member,
+        quantity   = 1,
+        start_date = today,
+        due_date   = today + datetime.timedelta(days=BORROW_PERIOD_DAYS),
+        status     = Borrow.Status.BORROWED,
+    )
+
     pending.status = Reservation.Status.FULFILLED
     pending.save(update_fields=["status", "updated_at"])
-    logger.info("[NOTIFY] reservation_id=%s member=%s book='%s'",
-                pending.pk, pending.member.email, book.title)
+
+    logger.info(
+        "[AUTO-BORROW] reservation_id=%s → borrow_id=%s member=%s book='%s'",
+        pending.pk, borrow.pk, pending.member.email, book.title,
+    )
+    return borrow
 
 
 def _decrement_copies(book, quantity):
@@ -327,7 +364,7 @@ def book_detail_view(request, book_id):
 
 def author_list_view(request):
     query   = request.GET.get("q", "").strip()
-    authors = Author.objects.all()
+    authors = Author.objects.annotate(book_count=Count("books")).order_by("name")
     if query:
         authors = authors.filter(name__icontains=query)
     page = Paginator(authors, 20).get_page(request.GET.get("page"))
@@ -429,7 +466,15 @@ def return_book_view(request, borrow_id):
             Book.objects.filter(pk=borrow.book_id).update(
                 available_copies=F("available_copies") + borrow.quantity
             )
-            _fulfil_next_reservation(borrow.book)
+
+            # FIFO auto-borrow: if someone is queued, immediately allocate
+            auto_borrow = _fulfil_next_reservation(borrow.book)
+            if auto_borrow:
+                messages.info(
+                    request,
+                    f"'{borrow.book.title}' has been automatically allocated "
+                    f"to the next member in the reservation queue."
+                )
 
         logger.info("Book returned: member=%s borrow_id=%s", request.user.email, borrow_id)
     except Exception as exc:
@@ -510,7 +555,30 @@ def pay_fine_view(request, fine_id):
         logger.exception("Fine payment failed: fine_id=%s: %s", fine_id, exc)
         messages.error(request, "Payment could not be processed. Please try again.")
 
-    return redirect("library:dashboard")
+    return redirect("library:fine_history")
+
+
+# ===========================================================================
+# 8b. Fine History
+# ===========================================================================
+
+@login_required
+def fine_history_view(request):
+    """Full fine history for the logged-in member."""
+    fines = (
+        Fine.objects
+        .filter(member=request.user)
+        .select_related("borrow__book")
+        .order_by("-created_at")
+    )
+    total_due  = sum(f.amount_due  for f in fines)
+    total_paid = sum(f.amount_paid for f in fines)
+    return render(request, "member/fine_history.html", {
+        "fines":      fines,
+        "total_due":  total_due,
+        "total_paid": total_paid,
+        "total_outstanding": total_due - total_paid,
+    })
 
 
 # ===========================================================================
@@ -815,6 +883,99 @@ def admin_mark_returned_view(request, borrow_id):
     return redirect("library:admin_loan_list")
 
 
+
+# ===========================================================================
+# Landing page
+# ===========================================================================
+
+def landing_view(request):
+    """
+    Public landing page.
+    Authenticated users are sent straight to their dashboard.
+    """
+    if request.user.is_authenticated:
+        return redirect("library:admin_dashboard" if request.user.is_staff
+                        else "library:dashboard")
+
+    from django.db.models import Sum
+    total_books   = Book.objects.count()
+    total_members = Account.objects.filter(is_member=True).count()
+    total_borrows = Borrow.objects.count()
+
+    return render(request, "landing.html", {
+        "total_books":   total_books   or 0,
+        "total_members": total_members or 0,
+        "total_borrows": total_borrows or 0,
+    })
+
+
+# ===========================================================================
+# Profile
+# ===========================================================================
+
+@login_required
+def profile_view(request):
+    """Display the logged-in user's profile."""
+    borrow_count      = Borrow.objects.filter(member=request.user).count()
+    active_borrow_count = Borrow.objects.filter(
+        member=request.user).exclude(status=Borrow.Status.RETURNED).count()
+    fine_count        = Fine.objects.filter(member=request.user).count()
+    reservation_count = Reservation.objects.filter(member=request.user).count()
+
+    return render(request, "member/profile.html", {
+        "borrow_count":       borrow_count,
+        "active_borrow_count": active_borrow_count,
+        "fine_count":         fine_count,
+        "reservation_count":  reservation_count,
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def profile_edit_view(request):
+    """Edit profile details and avatar."""
+    user = request.user
+
+    if request.method == "POST":
+        first_name = request.POST.get("first_name", "").strip()
+        last_name  = request.POST.get("last_name",  "").strip()
+        phone      = request.POST.get("phone",      "").strip()
+        gender     = request.POST.get("gender",     "").strip()
+        avatar     = request.FILES.get("avatar")
+
+        errors = []
+        if not first_name: errors.append("First name is required.")
+        if not last_name:  errors.append("Last name is required.")
+        if not phone:      errors.append("Phone number is required.")
+
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return render(request, "member/profile_edit.html")
+
+        try:
+            user.first_name = first_name
+            user.last_name  = last_name
+            user.phone      = phone
+            user.gender     = gender
+
+            if avatar:
+                # Delete old avatar if it is not the default
+                if user.avatar and "default" not in user.avatar.name:
+                    user.avatar.delete(save=False)
+                user.avatar = avatar
+
+            user.save(update_fields=["first_name", "last_name", "phone", "gender", "avatar"])
+            messages.success(request, "Profile updated successfully.")
+            logger.info("Profile updated: %s", user.email)
+            return redirect("library:profile")
+
+        except Exception as exc:
+            logger.exception("Profile update failed: %s", exc)
+            messages.error(request, "Could not update profile. Please try again.")
+
+    return render(request, "member/profile_edit.html")
+
 # ===========================================================================
 # Inline JSON — Author & Category creation from the book form modal
 # ===========================================================================
@@ -834,11 +995,11 @@ def author_create_json(request):
     if not name:
         return JsonResponse({"error": "Author name is required."}, status=400)
     if Author.objects.filter(name__iexact=name).exists():
-        return JsonResponse({"error": f"Author '{name}' already exists."}, status=400)
+        return JsonResponse({"error": f"Author '{escape(name)}' already exists."}, status=400)
     try:
         author = Author.objects.create(name=name)
         logger.info("Inline author created: %s by staff %s", author.name, request.user.email)
-        return JsonResponse({"id": author.pk, "name": author.name})
+        return JsonResponse({"id": author.pk, "name": escape(author.name)})
     except Exception as exc:
         logger.exception("Inline author creation failed: %s", exc)
         return JsonResponse({"error": "Could not create author."}, status=500)
@@ -855,11 +1016,11 @@ def category_create_json(request):
     if not name:
         return JsonResponse({"error": "Category name is required."}, status=400)
     if Category.objects.filter(name__iexact=name).exists():
-        return JsonResponse({"error": f"Category '{name}' already exists."}, status=400)
+        return JsonResponse({"error": f"Category '{escape(name)}' already exists."}, status=400)
     try:
         category = Category.objects.create(name=name)
         logger.info("Inline category created: %s by staff %s", category.name, request.user.email)
-        return JsonResponse({"id": category.pk, "name": category.name})
+        return JsonResponse({"id": category.pk, "name": escape(category.name)})
     except Exception as exc:
         logger.exception("Inline category creation failed: %s", exc)
         return JsonResponse({"error": "Could not create category."}, status=500)

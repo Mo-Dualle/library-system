@@ -12,33 +12,51 @@
   </a>
 </div>
 
-<!-- Stats -->
+<!-- Stats — each card is clickable -->
 <div class="row g-3 mb-4">
+
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center p-3">
-      <div class="h2 fw-bold text-dark mb-0">{{ active_borrows.count }}</div>
-      <small class="text-muted">Active Borrows</small>
-    </div>
+    <a href="#borrows-section" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 card-hover h-100">
+        <div class="h2 fw-bold text-dark mb-0">{{ active_borrows.count }}</div>
+        <small class="text-muted">Active Borrows</small>
+      </div>
+    </a>
   </div>
+
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center p-3 {% if overdue_count %}border-danger{% endif %}">
-      <div class="h2 fw-bold {% if overdue_count %}text-danger{% else %}text-dark{% endif %} mb-0">{{ overdue_count }}</div>
-      <small class="text-muted">Overdue</small>
-    </div>
+    <a href="#borrows-section" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 card-hover h-100 {% if overdue_count %}border-danger{% endif %}">
+        <div class="h2 fw-bold {% if overdue_count %}text-danger{% else %}text-dark{% endif %} mb-0">{{ overdue_count }}</div>
+        <small class="text-muted">Overdue</small>
+      </div>
+    </a>
   </div>
+
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center p-3">
-      <div class="h2 fw-bold text-dark mb-0">{{ reservations.count }}</div>
-      <small class="text-muted">Reservations</small>
-    </div>
+    <a href="#reservations-section" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 card-hover h-100">
+        <div class="h2 fw-bold text-dark mb-0">{{ reservations.count }}</div>
+        <small class="text-muted">Reservations</small>
+      </div>
+    </a>
   </div>
+
   <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center p-3 {% if unpaid_fines.count %}border-danger{% endif %}">
-      <div class="h2 fw-bold {% if unpaid_fines.count %}text-danger{% else %}text-dark{% endif %} mb-0">{{ unpaid_fines.count }}</div>
-      <small class="text-muted">Unpaid Fines</small>
-    </div>
+    <a href="{% url 'library:fine_history' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 card-hover h-100 {% if unpaid_fines.count %}border-danger{% endif %}">
+        <div class="h2 fw-bold {% if unpaid_fines.count %}text-danger{% else %}text-dark{% endif %} mb-0">{{ unpaid_fines.count }}</div>
+        <small class="text-muted">Fine History</small>
+      </div>
+    </a>
   </div>
+
 </div>
+
+<style>
+  .card-hover { transition: transform .15s ease, box-shadow .15s ease; cursor: pointer; }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.10) !important; }
+</style>
 
 <!-- Reading session -->
 {% if active_session %}
@@ -65,7 +83,7 @@
 {% endif %}
 
 <!-- Active Borrows -->
-<h5 class="fw-semibold mb-3"><i class="fa-solid fa-book me-2 text-secondary"></i>Active Borrows</h5>
+<h5 class="fw-semibold mb-3" id="borrows-section"><i class="fa-solid fa-book me-2 text-secondary"></i>Active Borrows</h5>
 {% if active_borrows %}
   <div class="table-responsive mb-4">
     <table class="table table-hover align-middle">
@@ -97,7 +115,7 @@
             </td>
             <td>
               <form method="post" action="{% url 'library:return_book' borrow.id %}"
-                    data-confirm="Return Book|Return '{{ borrow.book.title }}'?">
+                    data-confirm-title="Return Book" data-confirm-body="Return '{{ borrow.book.title }}'?" data-confirm-ok="Confirm" data-confirm-class="btn btn-danger">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-outline-secondary">
                   <i class="fa-solid fa-rotate-left me-1"></i>Return
@@ -114,7 +132,7 @@
 {% endif %}
 
 <!-- Reservations -->
-<h5 class="fw-semibold mb-3"><i class="fa-solid fa-clock me-2 text-secondary"></i>Reservations</h5>
+<h5 class="fw-semibold mb-3" id="reservations-section"><i class="fa-solid fa-clock me-2 text-secondary"></i>Reservations</h5>
 {% if reservations %}
   <div class="table-responsive mb-4">
     <table class="table table-hover align-middle">
@@ -133,7 +151,7 @@
             <td><span class="badge bg-info text-dark">Pending</span></td>
             <td>
               <form method="post" action="{% url 'library:cancel_reservation' res.id %}"
-                    data-confirm="Cancel Reservation|Remove yourself from the queue for '{{ res.book.title }}'?">
+                    data-confirm-title="Cancel Reservation" data-confirm-body="Remove yourself from the queue for '{{ res.book.title }}'?" data-confirm-ok="Confirm" data-confirm-class="btn btn-danger">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-outline-danger">
                   <i class="fa-solid fa-xmark me-1"></i>Cancel
@@ -165,7 +183,7 @@
             <td>${{ fine.amount_paid }}</td>
             <td>
               <form method="post" action="{% url 'library:pay_fine' fine.id %}"
-                    data-confirm="Pay Fine|Pay ${{ fine.amount_due }} for '{{ fine.borrow.book.title }}'?|Pay Now|btn btn-success">
+                    data-confirm-title="Pay Fine" data-confirm-body="Confirm payment?" data-confirm-ok="Pay Now" data-confirm-class="btn btn-success">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-success">
                   <i class="fa-solid fa-credit-card me-1"></i>Pay Fine
@@ -202,3 +220,6 @@
 {% endif %}
 
 {% endblock %}
+
+
+

@@ -81,7 +81,7 @@
                 <i class="fa-solid fa-eye me-1"></i>View Profile
               </a>
               <form method="post" action="{% url 'library:admin_member_toggle' member.id %}"
-                    data-confirm="{% if member.is_active %}Disable Account|Disable {{ member.get_full_name }}'s account?{% else %}Enable Account|Re-enable {{ member.get_full_name }}'s account?{% endif %}">
+                    data-confirm-title="{% if member.is_active %}Disable Account" data-confirm-body="Disable {{ member.get_full_name }}'s account?{% else %}Enable Account" data-confirm-ok="Re-enable {{ member.get_full_name }}'s account?{% endif %}" data-confirm-class="btn btn-danger">
                 {% csrf_token %}
                 <button type="submit"
                         class="btn btn-sm {% if member.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}"

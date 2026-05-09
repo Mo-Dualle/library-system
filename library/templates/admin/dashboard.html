@@ -2,6 +2,7 @@
 {% block title %}Admin Dashboard — LibraryApp{% endblock %}
 
 {% block content %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h4 class="fw-bold mb-0">Admin Dashboard</h4>
@@ -11,8 +12,15 @@
     <i class="fa-solid fa-eye me-1"></i>Public Site
   </a>
 </div>
-
-<!-- Stat cards — each links to the relevant management page -->
+{% comment %}
+<!--
+  Stat cards
+  NOTE: total_books, total_members, active_borrows, overdue_borrows,
+  pending_reservations, unpaid_fines are ALL integers from .count().
+  Display them with {{ }} only — never use {% for %} on these.
+  Only recent_borrows is a queryset and can be iterated.
+-->
+{% endcomment %}
 <div class="row g-3 mb-4">
 
   <div class="col-6 col-md-4 col-lg-2">
@@ -44,7 +52,8 @@
 
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{% url 'library:admin_loan_list' %}?status=overdue" class="text-decoration-none">
-      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover {% if overdue_borrows %}border-danger border{% endif %}">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover
+           {% if overdue_borrows %}border-danger border{% endif %}">
         <div class="h2 fw-bold mb-0 {% if overdue_borrows %}text-danger{% else %}text-dark{% endif %}">
           {{ overdue_borrows }}
         </div>
@@ -64,7 +73,8 @@
 
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{% url 'library:admin_member_list' %}" class="text-decoration-none">
-      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover {% if unpaid_fines %}border-danger border{% endif %}">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover
+           {% if unpaid_fines %}border-danger border{% endif %}">
         <div class="h2 fw-bold mb-0 {% if unpaid_fines %}text-danger{% else %}text-dark{% endif %}">
           {{ unpaid_fines }}
         </div>
@@ -77,16 +87,24 @@
 
 <!-- Quick actions -->
 <div class="d-flex gap-2 flex-wrap mb-4">
-  <a href="{% url 'library:admin_book_list' %}"   class="btn btn-dark btn-sm"><i class="fa-solid fa-books me-1"></i>Books</a>
-  <a href="{% url 'library:admin_book_create' %}" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-plus me-1"></i>Add Book</a>
-  <a href="{% url 'library:admin_member_list' %}" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-users me-1"></i>Members</a>
-  <a href="{% url 'library:admin_loan_list' %}"   class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-list-check me-1"></i>Loans</a>
+  <a href="{% url 'library:admin_book_list' %}"   class="btn btn-dark btn-sm">
+    <i class="fa-solid fa-books me-1"></i>Books
+  </a>
+  <a href="{% url 'library:admin_book_create' %}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-plus me-1"></i>Add Book
+  </a>
+  <a href="{% url 'library:admin_member_list' %}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-users me-1"></i>Members
+  </a>
+  <a href="{% url 'library:admin_loan_list' %}"   class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-list-check me-1"></i>Loans
+  </a>
   <a href="{% url 'library:admin_loan_list' %}?status=overdue" class="btn btn-danger btn-sm">
     <i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue
   </a>
 </div>
 
-<!-- Recent borrows -->
+<!-- Recent borrows — recent_borrows is a queryset, safe to iterate -->
 <h5 class="fw-semibold mb-3">Recent Activity</h5>
 
 {% if recent_borrows %}
@@ -124,8 +142,12 @@
             </td>
             <td>
               {% if borrow.status != 'returned' %}
-                <form method="post" action="{% url 'library:admin_mark_returned' borrow.id %}"
-                      data-confirm="Mark Returned|Confirm return for '{{ borrow.book.title }}'?">
+                <form method="post"
+                      action="{% url 'library:admin_mark_returned' borrow.id %}"
+                      data-confirm-title="Mark Returned"
+                      data-confirm-body="Confirm return for {{ borrow.book.title }}?"
+                      data-confirm-ok="Confirm"
+                      data-confirm-class="btn btn-dark">
                   {% csrf_token %}
                   <button type="submit" class="btn btn-sm btn-outline-secondary">
                     <i class="fa-solid fa-rotate-left me-1"></i>Return
@@ -143,9 +165,10 @@
   <a href="{% url 'library:admin_loan_list' %}" class="btn btn-link btn-sm ps-0 mt-1">
     View all loans <i class="fa-solid fa-arrow-right ms-1"></i>
   </a>
+
 {% else %}
   <div class="text-center py-4">
-    <i class="fa-solid fa-inbox fa-2x text-muted mb-2"></i>
+    <i class="fa-solid fa-inbox fa-2x text-muted mb-2 d-block"></i>
     <p class="text-muted mb-0">No borrow activity yet.</p>
   </div>
 {% endif %}
@@ -154,4 +177,5 @@
   .card-hover { transition: transform .15s ease, box-shadow .15s ease; cursor: pointer; }
   .card-hover:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.10) !important; }
 </style>
+
 {% endblock %}

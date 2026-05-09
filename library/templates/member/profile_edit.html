@@ -1,0 +1,193 @@
+{% extends "layout.html" %}
+{% block title %}Edit Profile — LibraryApp{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'library:profile' %}">My Profile</a></li>
+    <li class="breadcrumb-item active">Edit Profile</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <h4 class="fw-bold mb-4"><i class="fa-solid fa-pen me-2"></i>Edit Profile</h4>
+
+    <form id="profileForm"
+          method="post"
+          action="{% url 'library:profile_edit' %}"
+          enctype="multipart/form-data"
+          novalidate>
+      {% csrf_token %}
+
+      <!-- Avatar upload card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h6 class="fw-semibold mb-3">Profile Photo</h6>
+
+          <div class="d-flex align-items-center gap-4 flex-wrap">
+
+            <!-- Current / preview avatar -->
+            {% if user.avatar %}
+              <img id="avatarPreview"
+                   src="{{ user.avatar.url }}"
+                   alt="Avatar preview"
+                   class="rounded-circle border border-3 border-light shadow-sm"
+                   style="width:90px;height:90px;object-fit:cover"/>
+            {% else %}
+              <div id="avatarFallback"
+                   class="rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
+                   style="width:90px;height:90px;background:#212529;color:#fff;font-size:2rem;font-weight:700">
+                {{ user.first_name|first|upper }}
+              </div>
+              <img id="avatarPreview"
+                   src=""
+                   alt="Avatar preview"
+                   class="rounded-circle border border-3 border-light shadow-sm d-none"
+                   style="width:90px;height:90px;object-fit:cover"/>
+            {% endif %}
+
+            <div class="flex-grow-1">
+              <label for="avatar" class="form-label fw-semibold mb-1">Upload new photo</label>
+              <input type="file"
+                     class="form-control"
+                     id="avatar"
+                     name="avatar"
+                     accept="image/jpeg,image/png,image/webp,image/gif"
+                     data-preview="#avatarPreview"/>
+              <div class="form-text">JPG, PNG or WebP · Max 5 MB · Displayed as a circle</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal info card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h6 class="fw-semibold mb-3">Personal Information</h6>
+
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label for="first_name" class="form-label fw-semibold">First name *</label>
+              <input type="text"
+                     class="form-control"
+                     id="first_name"
+                     name="first_name"
+                     value="{{ user.first_name }}"
+                     placeholder="Jane"
+                     required/>
+              <div class="invalid-feedback">First name is required.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="last_name" class="form-label fw-semibold">Last name *</label>
+              <input type="text"
+                     class="form-control"
+                     id="last_name"
+                     name="last_name"
+                     value="{{ user.last_name }}"
+                     placeholder="Smith"
+                     required/>
+              <div class="invalid-feedback">Last name is required.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email"
+                     class="form-control bg-light"
+                     value="{{ user.email }}"
+                     disabled
+                     title="Email cannot be changed"/>
+              <div class="form-text">Contact support to change your email.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Username</label>
+              <input type="text"
+                     class="form-control bg-light"
+                     value="@{{ user.username }}"
+                     disabled
+                     title="Username cannot be changed"/>
+            </div>
+
+            <div class="col-md-6">
+              <label for="phone" class="form-label fw-semibold">Phone *</label>
+              <input type="tel"
+                     class="form-control"
+                     id="phone"
+                     name="phone"
+                     value="{{ user.phone }}"
+                     placeholder="+1 234 567 8900"
+                     required/>
+              <div class="invalid-feedback">Phone number is required.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="gender" class="form-label fw-semibold">
+                Gender <span class="text-muted fw-normal">(optional)</span>
+              </label>
+              <select class="form-select" id="gender" name="gender">
+                <option value="">Prefer not to say</option>
+                <option value="male"   {% if user.gender == "male"   %}selected{% endif %}>Male</option>
+                <option value="female" {% if user.gender == "female" %}selected{% endif %}>Female</option>
+                <option value="other"  {% if user.gender == "other"  %}selected{% endif %}>Other</option>
+              </select>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="d-flex gap-2 justify-content-end">
+        <a href="{% url 'library:profile' %}" class="btn btn-outline-secondary">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-dark" id="saveProfileBtn">
+          <i class="fa-solid fa-floppy-disk me-1"></i>Save Changes
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Live avatar preview + show/hide fallback initials
+(function () {
+  const input    = document.getElementById("avatar");
+  const preview  = document.getElementById("avatarPreview");
+  const fallback = document.getElementById("avatarFallback");
+
+  if (!input || !preview) return;
+
+  input.addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    // File size guard — 5 MB
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File is too large. Please choose an image under 5 MB.");
+      this.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      preview.src = e.target.result;
+      preview.classList.remove("d-none");
+      if (fallback) fallback.classList.add("d-none");
+    };
+    reader.readAsDataURL(file);
+  });
+})();
+</script>
+{% endblock %}

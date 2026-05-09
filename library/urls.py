@@ -23,7 +23,8 @@ urlpatterns = [
     # ------------------------------------------------------------------
     # Public catalog
     # ------------------------------------------------------------------
-    path("",                              views.book_list_view,   name="book_list"),
+    path("",         views.landing_view,  name="landing"),
+    path("books/",    views.book_list_view,   name="book_list"),
     path("books/<uuid:book_id>/",         views.book_detail_view, name="book_detail"),
     path("authors/",                      views.author_list_view,   name="author_list"),
     path("authors/<int:author_id>/",      views.author_detail_view, name="author_detail"),
@@ -44,7 +45,14 @@ urlpatterns = [
     # ------------------------------------------------------------------
     # Fine  [POST only]
     # ------------------------------------------------------------------
-    path("fine/pay/<int:fine_id>/", views.pay_fine_view, name="pay_fine"),
+    path("fine/pay/<int:fine_id>/", views.pay_fine_view,    name="pay_fine"),
+    path("fine/history/",            views.fine_history_view, name="fine_history"),
+
+    # ------------------------------------------------------------------
+    # Profile
+    # ------------------------------------------------------------------
+    path("profile/",      views.profile_view,      name="profile"),
+    path("profile/edit/", views.profile_edit_view, name="profile_edit"),
 
     # ------------------------------------------------------------------
     # Reading session  [POST only]

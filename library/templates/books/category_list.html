@@ -2,37 +2,73 @@
 {% block title %}Categories — LibraryApp{% endblock %}
 
 {% block content %}
-<div class="page">
 
-  <div class="section-header">
-    <h1>Categories</h1>
-    <p style="color:var(--text-muted)">Browse books by genre</p>
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="fw-bold mb-0">Categories</h4>
+    <small class="text-muted">Browse books by genre</small>
+  </div>
+</div>
+
+{% if categories %}
+
+  <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+    {% for cat in categories %}
+      <div class="col">
+        <a href="{% url 'library:book_list' %}?category={{ cat.id }}"
+           class="text-decoration-none text-dark">
+          <div class="card border-0 shadow-sm h-100 card-hover">
+            <div class="card-body d-flex flex-column align-items-center text-center p-4">
+
+              <!-- Icon circle -->
+              <div class="mb-3 d-flex align-items-center justify-content-center rounded-circle"
+                   style="width:60px;height:60px;background:#f1f3f5;font-size:1.5rem">
+                {% if cat.name|lower == "fiction" %}🗡️
+                {% elif cat.name|lower == "science" or cat.name|lower == "sciences" %}🔬
+                {% elif cat.name|lower == "history" %}📜
+                {% elif cat.name|lower == "technology" or cat.name|lower == "tech" %}💻
+                {% elif cat.name|lower == "art" %}🎨
+                {% elif cat.name|lower == "poetry" %}✍️
+                {% elif cat.name|lower == "religion" %}🕌
+                {% elif cat.name|lower == "philosophy" %}🧠
+                {% elif cat.name|lower == "biography" %}👤
+                {% elif cat.name|lower == "children" %}🧸
+                {% elif cat.name|lower == "fantasy" %}🐉
+                {% elif cat.name|lower == "mystery" or cat.name|lower == "thriller" %}🔍
+                {% elif cat.name|lower == "romance" %}❤️
+                {% elif cat.name|lower == "business" %}💼
+                {% elif cat.name|lower == "health" or cat.name|lower == "medicine" %}🏥
+                {% elif cat.name|lower == "travel" %}✈️
+                {% elif cat.name|lower == "cooking" or cat.name|lower == "food" %}🍳
+                {% elif cat.name|lower == "sports" %}⚽
+                {% else %}📚{% endif %}
+              </div>
+
+              <h6 class="fw-bold mb-1">{{ cat.name }}</h6>
+
+              <span class="badge bg-dark mt-1">
+                {{ cat.book_count }} book{{ cat.book_count|pluralize }}
+              </span>
+
+            </div>
+          </div>
+        </a>
+      </div>
+    {% endfor %}
   </div>
 
-  {% if categories %}
-    <div class="grid-3">
-      {% for cat in categories %}
-        <a href="{% url 'library:book_list' %}?category={{ cat.id }}"
-           class="card"
-           style="display:flex;align-items:center;justify-content:space-between;padding:1.3rem 1.5rem;color:inherit">
-          <div>
-            <h3 style="margin-bottom:.25rem">{{ cat.name }}</h3>
-            <p style="font-size:.82rem;color:var(--text-muted)">
-              {{ cat.book_count }} book{{ cat.book_count|pluralize }}
-            </p>
-          </div>
-          <span style="background:var(--navy);color:var(--gold);font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            {{ cat.name|first|upper }}
-          </span>
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="empty">
-      <i class="fa-solid fa-tags"></i>
-      <p>No categories yet.</p>
-    </div>
-  {% endif %}
+{% else %}
+  <div class="text-center py-5">
+    <i class="fa-solid fa-tags fa-3x text-muted mb-3 d-block"></i>
+    <h5 class="fw-semibold">No categories yet</h5>
+    <p class="text-muted">Categories will appear here once books are added.</p>
+  </div>
+{% endif %}
 
-</div>
+<style>
+  .card-hover { transition: transform .15s ease, box-shadow .15s ease; }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.10) !important; }
+</style>
+
 {% endblock %}

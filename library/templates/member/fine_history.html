@@ -1,0 +1,117 @@
+{% extends "layout.html" %}
+{% block title %}Fine History — LibraryApp{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="fw-bold mb-0">Fine History</h4>
+    <small class="text-muted">All fines on your account</small>
+  </div>
+  <a href="{% url 'library:dashboard' %}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="h3 fw-bold text-dark mb-0">${{ total_due|floatformat:2 }}</div>
+      <small class="text-muted">Total Fined</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="h3 fw-bold text-success mb-0">${{ total_paid|floatformat:2 }}</div>
+      <small class="text-muted">Total Paid</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm text-center p-3 {% if total_outstanding %}border-danger{% endif %}">
+      <div class="h3 fw-bold {% if total_outstanding %}text-danger{% else %}text-dark{% endif %} mb-0">
+        ${{ total_outstanding|floatformat:2 }}
+      </div>
+      <small class="text-muted">Outstanding</small>
+    </div>
+  </div>
+</div>
+
+{% if fines %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white py-3 px-4">
+      <span class="fw-semibold">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>Fine Records
+      </span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Book</th>
+            <th>Fine Date</th>
+            <th>Amount Due</th>
+            <th>Amount Paid</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fine in fines %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ fine.borrow.book.title }}</div>
+                <small class="text-muted">
+                  Due {{ fine.borrow.due_date|date:"M d, Y" }} —
+                  Returned {{ fine.borrow.return_date|date:"M d, Y"|default:"Not returned" }}
+                </small>
+              </td>
+              <td>{{ fine.created_at|date:"M d, Y" }}</td>
+              <td class="fw-bold text-danger">${{ fine.amount_due }}</td>
+              <td>${{ fine.amount_paid }}</td>
+              <td>
+                {% if fine.is_settled %}
+                  <span class="badge badge-available">
+                    <i class="fa-solid fa-circle-check me-1"></i>Settled
+                  </span>
+                {% else %}
+                  <span class="badge badge-unavailable">
+                    <i class="fa-solid fa-clock me-1"></i>Unpaid
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if not fine.is_settled %}
+                  <form method="post" action="{% url 'library:pay_fine' fine.id %}"
+                        data-confirm-title="Pay Fine"
+                        data-confirm-body="Pay ${{ fine.amount_due }} for {{ fine.borrow.book.title }}?"
+                        data-confirm-ok="Pay Now"
+                        data-confirm-class="btn btn-success">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-success">
+                      <i class="fa-solid fa-credit-card me-1"></i>Pay
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% else %}
+  <div class="text-center py-5">
+    <i class="fa-solid fa-circle-check fa-3x text-success mb-3 d-block"></i>
+    <h5 class="fw-semibold">No fines on record</h5>
+    <p class="text-muted">Your account is in good standing.</p>
+    <a href="{% url 'library:book_list' %}" class="btn btn-dark">
+      <i class="fa-solid fa-books me-1"></i>Browse Books
+    </a>
+  </div>
+{% endif %}
+
+{% endblock %}
