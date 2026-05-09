@@ -86,8 +86,12 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'library_system',
+        'USER': 'postgres',
+        'PASSWORD': 'duran123',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
