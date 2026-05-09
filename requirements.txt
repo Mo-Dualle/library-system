@@ -20,10 +20,8 @@ polib==1.2.0
 psutil==7.1.0
 psycopg2-binary==2.9.11
 PyPDF2==3.0.1
-pypiwin32==223
 python-dateutil==2.9.0.post0
 pytz==2025.2
-pywin32==311
 reportlab==4.4.4
 requests==2.32.5
 requests-file==2.1.0
