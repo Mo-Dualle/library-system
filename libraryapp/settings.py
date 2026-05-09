@@ -2,6 +2,7 @@
 Django settings for libraryapp project.
 """
 
+import os
 from pathlib import Path
 from django.contrib.messages import constants as message_constants
 
@@ -12,9 +13,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 # ---------------------------------------------------------------------------
 
-SECRET_KEY = 'django-insecure-t!qmglfmp1iwiv-*s7^%jj%j@_nrmfw)5_&!+r9xuj_l1(=8z@'
-DEBUG      = True
-ALLOWED_HOSTS = []
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-t!qmglfmp1iwiv-*s7^%jj%j@_nrmfw)5_&!+r9xuj_l1(=8z@')
+DEBUG      = os.environ.get('DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +71,6 @@ AUTH_USER_MODEL = 'library.Account'
 
 # ---------------------------------------------------------------------------
 # Auth redirects
-# @login_required sends unauthenticated users to LOGIN_URL.
-# Our logout view already redirects explicitly, so LOGOUT_REDIRECT_URL
-# is a fallback only.
 # ---------------------------------------------------------------------------
 
 LOGIN_URL           = '/login/'
@@ -81,17 +79,25 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 
 # ---------------------------------------------------------------------------
-# Database
+# Database — PostgreSQL
+# Credentials are read from environment variables in production.
+# Fallback values are used for local development only.
 # ---------------------------------------------------------------------------
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'library_system',
-        'USER': 'postgres',
-        'PASSWORD': 'duran123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE':   'django.db.backends.postgresql',
+        'NAME':     os.environ.get('DB_NAME',     'library_system'),
+        'USER':     os.environ.get('DB_USER',     'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'duran123'),
+        'HOST':     os.environ.get('DB_HOST',     'localhost'),
+        'PORT':     os.environ.get('DB_PORT',     '5432'),
+        'OPTIONS': {
+            # Keep connections alive for up to 60 s — reduces overhead
+            # on repeated requests during development and production.
+            'connect_timeout': 10,
+        },
+        'CONN_MAX_AGE': 60,   # persistent connections (seconds)
     }
 }
 
@@ -124,15 +130,15 @@ USE_TZ        = True
 
 STATIC_URL       = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT      = BASE_DIR / 'staticfiles'   # used by collectstatic for deployment
 
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # ---------------------------------------------------------------------------
-# Flash messages — Bug fix #5
-# Map Django's 'error' tag to Bootstrap's 'danger' so alert classes render
-# correctly: alert-danger instead of alert-error.
+# Flash messages
+# Maps Django's 'error' tag → Bootstrap's 'danger' class.
 # ---------------------------------------------------------------------------
 
 MESSAGE_TAGS = {
@@ -140,43 +146,49 @@ MESSAGE_TAGS = {
     message_constants.INFO:    'info',
     message_constants.SUCCESS: 'success',
     message_constants.WARNING: 'warning',
-    message_constants.ERROR:   'danger',     # ← key fix: 'error' → 'danger'
+    message_constants.ERROR:   'danger',
 }
+
+
+# ---------------------------------------------------------------------------
+# Security hardening
+# ---------------------------------------------------------------------------
+
+# Prevent MIME-type sniffing
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Emit X-XSS-Protection: 1; mode=block
+SECURE_BROWSER_XSS_FILTER = True
+
+# Block the site from being embedded in any <iframe>
+X_FRAME_OPTIONS = 'DENY'
+
+# Session cookie is HttpOnly — not readable by JavaScript
+SESSION_COOKIE_HTTPONLY = True
+
+# CSRF cookie must be readable by JavaScript for fetch()-based requests
+CSRF_COOKIE_HTTPONLY = False
+
+# Restrict cookies to same-site requests (mitigates CSRF from third-party sites)
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE    = 'Lax'
+
+# ---------------------------------------------------------------------------
+# Production-only settings
+# Uncomment these when deploying over HTTPS.
+# ---------------------------------------------------------------------------
+
+# SECURE_SSL_REDIRECT            = True
+# SESSION_COOKIE_SECURE          = True
+# CSRF_COOKIE_SECURE             = True
+# SECURE_HSTS_SECONDS            = 31536000   # 1 year
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD            = True
+# SECURE_PROXY_SSL_HEADER        = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # ---------------------------------------------------------------------------
 # Misc
 # ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Security hardening  (safe for development; tighten for production)
-# ---------------------------------------------------------------------------
-
-# Prevent browsers from MIME-sniffing responses away from the declared content-type
-SECURE_CONTENT_TYPE_NOSNIFF = True
-
-# Emit X-XSS-Protection: 1; mode=block on every response
-SECURE_BROWSER_XSS_FILTER = True
-
-# Forbid the site from being embedded in any <iframe>
-#   XFrameOptionsMiddleware already sends this; being explicit is clearer.
-X_FRAME_OPTIONS = 'DENY'
-
-# Cookies are inaccessible to JavaScript — protects session & CSRF cookies
-#   NOTE: CSRF_COOKIE_HTTPONLY must remain False so our JS can read it.
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY    = False   # required for JS-based CSRF reads
-
-# Restrict cookies to same-site requests (stops CSRF via third-party sites)
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE    = 'Lax'
-
-# --- Production-only settings (uncomment when deploying over HTTPS) ---
-# SECURE_SSL_REDIRECT         = True
-# SESSION_COOKIE_SECURE       = True
-# CSRF_COOKIE_SECURE          = True
-# SECURE_HSTS_SECONDS         = 31536000
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD         = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
