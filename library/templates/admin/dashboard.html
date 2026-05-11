@@ -1,113 +1,193 @@
 {% extends "layout.html" %}
-{% block title %}Admin Dashboard — LibraryApp{% endblock %}
+{% block title %}Staff overview — LibraryApp{% endblock %}
 
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h4 class="fw-bold mb-0">Admin Dashboard</h4>
-    <small class="text-muted">Library overview</small>
+    <h4 class="fw-bold mb-0">Staff overview</h4>
+    <small class="text-muted">Full library management</small>
   </div>
   <a href="{% url 'library:book_list' %}" class="btn btn-outline-dark btn-sm">
     <i class="fa-solid fa-eye me-1"></i>Public Site
   </a>
 </div>
-{% comment %}
-<!--
-  Stat cards
-  NOTE: total_books, total_members, active_borrows, overdue_borrows,
-  pending_reservations, unpaid_fines are ALL integers from .count().
-  Display them with {{ }} only — never use {% for %} on these.
-  Only recent_borrows is a queryset and can be iterated.
--->
-{% endcomment %}
+
+{# Stat cards — integers only; never {% for %} on _count variables. #}
 <div class="row g-3 mb-4">
 
+  {% if staff_access.catalog %}
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{% url 'library:admin_book_list' %}" class="text-decoration-none">
       <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
-        <div class="h2 fw-bold text-dark mb-0">{{ total_books }}</div>
+        <div class="h2 fw-bold text-dark mb-0">{{ total_books_count }}</div>
         <small class="text-muted">Books</small>
       </div>
     </a>
   </div>
+  {% else %}
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm text-center p-3 h-100 bg-light">
+      <div class="h2 fw-bold text-secondary mb-0">{{ total_books_count }}</div>
+      <small class="text-muted">Books</small>
+    </div>
+  </div>
+  {% endif %}
 
+  {% if staff_access.members %}
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{% url 'library:admin_member_list' %}" class="text-decoration-none">
       <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
-        <div class="h2 fw-bold text-dark mb-0">{{ total_members }}</div>
-        <small class="text-muted">Members</small>
+        <div class="h2 fw-bold text-dark mb-0">{{ total_users_count }}</div>
+        <small class="text-muted">Total Users</small>
+        <div class="d-flex justify-content-center gap-2 mt-1">
+          <span class="badge bg-secondary" style="font-size:.7rem">
+            {{ total_members_count }} members
+          </span>
+          <span class="badge bg-dark" style="font-size:.7rem">
+            {{ total_admins_count }} admins
+          </span>
+        </div>
       </div>
     </a>
   </div>
+  {% else %}
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm text-center p-3 h-100 bg-light">
+      <div class="h2 fw-bold text-secondary mb-0">{{ total_users_count }}</div>
+      <small class="text-muted">Total Users</small>
+      <div class="d-flex justify-content-center gap-2 mt-1">
+        <span class="badge bg-secondary" style="font-size:.7rem">{{ total_members_count }} members</span>
+        <span class="badge bg-dark" style="font-size:.7rem">{{ total_admins_count }} admins</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
+  {% if staff_access.circulation %}
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{% url 'library:admin_loan_list' %}" class="text-decoration-none">
       <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
-        <div class="h2 fw-bold text-dark mb-0">{{ active_borrows }}</div>
+        <div class="h2 fw-bold text-dark mb-0">{{ active_borrows_count }}</div>
         <small class="text-muted">Active Borrows</small>
       </div>
     </a>
   </div>
-
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{% url 'library:admin_loan_list' %}?status=overdue" class="text-decoration-none">
       <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover
-           {% if overdue_borrows %}border-danger border{% endif %}">
-        <div class="h2 fw-bold mb-0 {% if overdue_borrows %}text-danger{% else %}text-dark{% endif %}">
-          {{ overdue_borrows }}
+           {% if overdue_borrows_count %}border-danger border{% endif %}">
+        <div class="h2 fw-bold mb-0
+             {% if overdue_borrows_count %}text-danger{% else %}text-dark{% endif %}">
+          {{ overdue_borrows_count }}
         </div>
         <small class="text-muted">Overdue</small>
       </div>
     </a>
   </div>
-
   <div class="col-6 col-md-4 col-lg-2">
-    <a href="{% url 'library:admin_loan_list' %}" class="text-decoration-none">
+    <a href="{% url 'library:admin_reservation_list' %}" class="text-decoration-none">
       <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
-        <div class="h2 fw-bold text-dark mb-0">{{ pending_reservations }}</div>
+        <div class="h2 fw-bold text-dark mb-0">{{ pending_reservations_count }}</div>
         <small class="text-muted">Reservations</small>
       </div>
     </a>
   </div>
-
+  {% else %}
   <div class="col-6 col-md-4 col-lg-2">
-    <a href="{% url 'library:admin_member_list' %}" class="text-decoration-none">
+    <div class="card border-0 shadow-sm text-center p-3 h-100 bg-light">
+      <div class="h2 fw-bold text-secondary mb-0">{{ active_borrows_count }}</div>
+      <small class="text-muted">Active Borrows</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm text-center p-3 h-100 bg-light
+         {% if overdue_borrows_count %}border-danger border{% endif %}">
+      <div class="h2 fw-bold mb-0 {% if overdue_borrows_count %}text-danger{% else %}text-secondary{% endif %}">
+        {{ overdue_borrows_count }}
+      </div>
+      <small class="text-muted">Overdue</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm text-center p-3 h-100 bg-light">
+      <div class="h2 fw-bold text-secondary mb-0">{{ pending_reservations_count }}</div>
+      <small class="text-muted">Reservations</small>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if staff_access.fines %}
+  <div class="col-6 col-md-4 col-lg-2">
+    <a href="{% url 'library:admin_fine_list' %}?status=unpaid" class="text-decoration-none">
       <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover
-           {% if unpaid_fines %}border-danger border{% endif %}">
-        <div class="h2 fw-bold mb-0 {% if unpaid_fines %}text-danger{% else %}text-dark{% endif %}">
-          {{ unpaid_fines }}
+           {% if unpaid_fines_count %}border-danger border{% endif %}">
+        <div class="h2 fw-bold mb-0
+             {% if unpaid_fines_count %}text-danger{% else %}text-dark{% endif %}">
+          {{ unpaid_fines_count }}
         </div>
         <small class="text-muted">Unpaid Fines</small>
       </div>
     </a>
   </div>
+  {% else %}
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm text-center p-3 h-100 bg-light
+         {% if unpaid_fines_count %}border-danger border{% endif %}">
+      <div class="h2 fw-bold mb-0 {% if unpaid_fines_count %}text-danger{% else %}text-secondary{% endif %}">
+        {{ unpaid_fines_count }}
+      </div>
+      <small class="text-muted">Unpaid Fines</small>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 
 <!-- Quick actions -->
 <div class="d-flex gap-2 flex-wrap mb-4">
+  {% if staff_access.catalog %}
   <a href="{% url 'library:admin_book_list' %}"   class="btn btn-dark btn-sm">
     <i class="fa-solid fa-books me-1"></i>Books
   </a>
   <a href="{% url 'library:admin_book_create' %}" class="btn btn-outline-dark btn-sm">
     <i class="fa-solid fa-plus me-1"></i>Add Book
   </a>
+  {% endif %}
+  {% if staff_access.members %}
   <a href="{% url 'library:admin_member_list' %}" class="btn btn-outline-dark btn-sm">
-    <i class="fa-solid fa-users me-1"></i>Members
+    <i class="fa-solid fa-users me-1"></i>Users
   </a>
+  <a href="{% url 'library:admin_member_list' %}?role=admin" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-user-shield me-1"></i>Admins
+  </a>
+  {% endif %}
+  {% if staff_access.circulation %}
   <a href="{% url 'library:admin_loan_list' %}"   class="btn btn-outline-dark btn-sm">
     <i class="fa-solid fa-list-check me-1"></i>Loans
   </a>
   <a href="{% url 'library:admin_loan_list' %}?status=overdue" class="btn btn-danger btn-sm">
     <i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue
   </a>
+  <a href="{% url 'library:admin_reservation_list' %}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-clock me-1"></i>Reservations
+  </a>
+  {% endif %}
+  {% if staff_access.fines %}
+  <a href="{% url 'library:admin_fine_list' %}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-triangle-exclamation me-1"></i>Fines
+  </a>
+  {% endif %}
+  {% if staff_access.staff_accounts %}
+  <a href="{% url 'library:admin_create_staff' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fa-solid fa-user-shield me-1"></i>Add staff
+  </a>
+  {% endif %}
 </div>
 
-<!-- Recent borrows — recent_borrows is a queryset, safe to iterate -->
 <h5 class="fw-semibold mb-3">Recent Activity</h5>
 
-{% if recent_borrows %}
+{% if recent_borrow_list %}
   <div class="table-responsive">
     <table class="table table-hover align-middle">
       <thead class="table-dark">
@@ -120,13 +200,17 @@
         </tr>
       </thead>
       <tbody>
-        {% for borrow in recent_borrows %}
+        {% for borrow in recent_borrow_list %}
           <tr>
             <td>
+              {% if staff_access.members or staff_access.circulation or staff_access.fines %}
               <a href="{% url 'library:admin_member_detail' borrow.member.id %}"
                  class="fw-semibold text-decoration-none text-dark">
                 {{ borrow.member.get_full_name }}
               </a>
+              {% else %}
+              <span class="fw-semibold">{{ borrow.member.get_full_name }}</span>
+              {% endif %}
               <div class="text-muted small">{{ borrow.member.email }}</div>
             </td>
             <td class="fw-semibold">{{ borrow.book.title }}</td>
@@ -141,11 +225,11 @@
               {% endif %}
             </td>
             <td>
-              {% if borrow.status != 'returned' %}
+              {% if borrow.status != 'returned' and staff_access.circulation %}
                 <form method="post"
                       action="{% url 'library:admin_mark_returned' borrow.id %}"
                       data-confirm-title="Mark Returned"
-                      data-confirm-body="Confirm return for {{ borrow.book.title }}?"
+                      data-confirm-body="Confirm return?"
                       data-confirm-ok="Confirm"
                       data-confirm-class="btn btn-dark">
                   {% csrf_token %}
@@ -153,6 +237,8 @@
                     <i class="fa-solid fa-rotate-left me-1"></i>Return
                   </button>
                 </form>
+              {% elif borrow.status != 'returned' %}
+                <span class="text-muted small">—</span>
               {% else %}
                 <span class="text-muted">—</span>
               {% endif %}
@@ -162,9 +248,11 @@
       </tbody>
     </table>
   </div>
+  {% if staff_access.circulation %}
   <a href="{% url 'library:admin_loan_list' %}" class="btn btn-link btn-sm ps-0 mt-1">
     View all loans <i class="fa-solid fa-arrow-right ms-1"></i>
   </a>
+  {% endif %}
 
 {% else %}
   <div class="text-center py-4">

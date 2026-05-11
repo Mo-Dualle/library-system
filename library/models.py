@@ -29,8 +29,16 @@ class Account(AbstractUser):
     USERNAME_FIELD  = "email"
     REQUIRED_FIELDS = ["username"]
 
-    class Meta:
+    class Meta(AbstractUser.Meta):
         db_table = "account"
+        permissions = [
+            ("access_staff_dashboard", "Can access the staff dashboard"),
+            ("manage_catalog", "Can manage books, authors, and categories"),
+            ("manage_circulation", "Can manage loans and reservations"),
+            ("manage_fines_staff", "Can view and manage fines (staff)"),
+            ("manage_members", "Can manage library members and accounts"),
+            ("manage_staff_accounts", "Can create staff accounts and assign roles"),
+        ]
 
     def __str__(self):
         return f"{self.get_full_name()} ({self.email})"

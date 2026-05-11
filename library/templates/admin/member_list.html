@@ -1,100 +1,195 @@
 {% extends "layout.html" %}
-{% block title %}Members — LibraryApp{% endblock %}
+{% block title %}Users — LibraryApp{% endblock %}
 
 {% block content %}
 
 <!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h4 class="fw-bold mb-0">Members</h4>
-    <small class="text-muted">{{ page_obj.paginator.count }} registered member{{ page_obj.paginator.count|pluralize }}</small>
+    <h4 class="fw-bold mb-0">Users</h4>
+    <small class="text-muted">
+      {{ total_all }} total &nbsp;·&nbsp;
+      {{ total_members }} member{{ total_members|pluralize }} &nbsp;·&nbsp;
+      {{ total_admins }} role staff account{{ total_admins|pluralize }}
+    </small>
   </div>
+  {% if staff_access.staff_accounts %}
+  <a href="{% url 'library:admin_create_staff' %}" class="btn btn-dark btn-sm">
+    <i class="fa-solid fa-user-shield me-1"></i>Add staff
+  </a>
+  {% endif %}
+</div>
+
+<!-- Role filter tabs -->
+<div class="d-flex gap-2 flex-wrap mb-3">
+
+  <a href="{% url 'library:admin_member_list' %}{% if query %}?q={{ query }}{% endif %}"
+     class="btn btn-sm {% if not role_filter %}btn-dark{% else %}btn-outline-dark{% endif %}">
+    <i class="fa-solid fa-users me-1"></i>All Users
+    <span class="badge {% if not role_filter %}bg-light text-dark{% else %}bg-secondary{% endif %} ms-1">
+      {{ total_all }}
+    </span>
+  </a>
+
+  <a href="?role=member{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm {% if role_filter == 'member' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    <i class="fa-solid fa-user me-1"></i>Members
+    <span class="badge {% if role_filter == 'member' %}bg-light text-dark{% else %}bg-secondary{% endif %} ms-1">
+      {{ total_members }}
+    </span>
+  </a>
+
+  <a href="?role=admin{% if query %}&q={{ query }}{% endif %}"
+     class="btn btn-sm {% if role_filter == 'admin' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+    <i class="fa-solid fa-user-shield me-1"></i>Staff roles
+    <span class="badge {% if role_filter == 'admin' %}bg-light text-dark{% else %}bg-secondary{% endif %} ms-1">
+      {{ total_admins }}
+    </span>
+  </a>
+
 </div>
 
 <!-- Search -->
 <form method="get" action="{% url 'library:admin_member_list' %}" class="row g-2 mb-4">
+  {% if role_filter %}
+    <input type="hidden" name="role" value="{{ role_filter }}"/>
+  {% endif %}
   <div class="col-md-5">
     <div class="input-group">
-      <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-      <input type="search" class="form-control border-start-0" name="q"
-             value="{{ query }}" placeholder="Search by name or email…"/>
+      <span class="input-group-text bg-white border-end-0">
+        <i class="fa-solid fa-magnifying-glass text-muted"></i>
+      </span>
+      <input type="search" class="form-control border-start-0"
+             name="q" value="{{ query }}"
+             placeholder="Search name, username or email…"/>
     </div>
   </div>
   <div class="col-auto d-flex gap-2">
     <button type="submit" class="btn btn-dark">Search</button>
     {% if query %}
-      <a href="{% url 'library:admin_member_list' %}" class="btn btn-outline-secondary">
+      <a href="?role={{ role_filter }}" class="btn btn-outline-secondary">
         <i class="fa-solid fa-xmark"></i>
       </a>
     {% endif %}
   </div>
 </form>
 
+<!-- User cards -->
 {% if page_obj %}
 
-  <!-- Member cards grid -->
   <div class="row g-3 mb-4">
-    {% for member in page_obj %}
+    {% for user in page_obj %}
       <div class="col-12 col-md-6 col-xl-4">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body p-4">
 
-            <!-- Member header -->
+            <!-- User header -->
             <div class="d-flex align-items-center gap-3 mb-3">
-              <div class="avatar-circle flex-shrink-0"
-                   style="width:48px;height:48px;font-size:1.2rem">
-                {{ member.first_name|first|upper }}
+
+              <!-- Avatar with onerror fallback -->
+              <div style="position:relative;width:48px;height:48px;flex-shrink:0">
+                {% if user.avatar %}
+                  <img src="{{ user.avatar.url }}"
+                       alt="{{ user.get_full_name }}"
+                       class="rounded-circle border"
+                       style="width:48px;height:48px;object-fit:cover"
+                       onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+                {% endif %}
+                <div class="rounded-circle d-flex align-items-center justify-content-center border flex-shrink-0"
+                     style="width:48px;height:48px;font-size:1.1rem;font-weight:700;color:#fff;
+                            background:{% if user.is_staff %}#212529{% else %}#0d3b6e{% endif %};
+                            {% if user.avatar %}display:none;{% endif %}position:absolute;top:0;left:0">
+                  {{ user.first_name|first|upper }}
+                </div>
               </div>
-              <div class="overflow-hidden">
-                <div class="fw-bold text-truncate">{{ member.get_full_name }}</div>
-                <small class="text-muted">@{{ member.username }}</small>
+
+              <div class="overflow-hidden flex-grow-1">
+                <div class="fw-bold text-truncate">{{ user.get_full_name }}</div>
+                <div class="text-muted small text-truncate">@{{ user.username }}</div>
               </div>
-              <div class="ms-auto">
-                {% if member.is_active %}
-                  <span class="badge badge-available">Active</span>
+
+              <div class="flex-shrink-0 text-end">
+                {% if user.is_staff %}
+                  {% for g in user.groups.all %}
+                    {% if g.name == "Librarian" %}
+                      <span class="badge bg-primary me-1"><i class="fa-solid fa-books me-1"></i>Librarian</span>
+                    {% elif g.name == "Finance Officer" %}
+                      <span class="badge bg-success me-1"><i class="fa-solid fa-coins me-1"></i>Finance</span>
+                    {% elif g.name == "User Manager" %}
+                      <span class="badge bg-info text-dark me-1"><i class="fa-solid fa-users-gear me-1"></i>User manager</span>
+                    {% endif %}
+                  {% empty %}
+                    <span class="badge bg-dark">
+                      <i class="fa-solid fa-user-shield me-1"></i>Full staff
+                    </span>
+                  {% endfor %}
                 {% else %}
-                  <span class="badge badge-unavailable">Disabled</span>
+                  <span class="badge bg-primary">
+                    <i class="fa-solid fa-user me-1"></i>Member
+                  </span>
                 {% endif %}
               </div>
+
             </div>
 
             <!-- Info rows -->
-            <div class="d-flex flex-column gap-1 mb-3" style="font-size:.875rem">
+            <div class="d-flex flex-column gap-1 mb-3" style="font-size:.85rem">
               <div class="d-flex gap-2">
                 <i class="fa-solid fa-envelope text-muted" style="width:16px;margin-top:2px"></i>
-                <span class="text-truncate">{{ member.email }}</span>
+                <span class="text-truncate">{{ user.email }}</span>
               </div>
               <div class="d-flex gap-2">
                 <i class="fa-solid fa-phone text-muted" style="width:16px;margin-top:2px"></i>
-                <span>{{ member.phone|default:"—" }}</span>
+                <span>{{ user.phone|default:"—" }}</span>
               </div>
               <div class="d-flex gap-2">
                 <i class="fa-solid fa-calendar text-muted" style="width:16px;margin-top:2px"></i>
-                <span>Joined {{ member.date_joined|date:"M d, Y" }}</span>
+                <span>Joined {{ user.date_joined|date:"M d, Y" }}</span>
+              </div>
+              <div class="d-flex gap-2">
+                <i class="fa-solid fa-circle text-muted" style="width:16px;margin-top:2px;font-size:.5rem;margin-top:5px"></i>
+                {% if user.is_active %}
+                  <span class="text-success fw-semibold">Active</span>
+                {% else %}
+                  <span class="text-danger fw-semibold">Disabled</span>
+                {% endif %}
               </div>
             </div>
 
             <!-- Actions -->
             <div class="d-flex gap-2">
-              <a href="{% url 'library:admin_member_detail' member.id %}"
-                 class="btn btn-dark btn-sm flex-grow-1">
-                <i class="fa-solid fa-eye me-1"></i>View Profile
-              </a>
-              <form method="post" action="{% url 'library:admin_member_toggle' member.id %}"
-                    data-confirm-title="{% if member.is_active %}Disable Account" data-confirm-body="Disable {{ member.get_full_name }}'s account?{% else %}Enable Account" data-confirm-ok="Re-enable {{ member.get_full_name }}'s account?{% endif %}" data-confirm-class="btn btn-danger">
+              {% if not user.is_staff %}
+                <a href="{% url 'library:admin_member_detail' user.id %}"
+                   class="btn btn-dark btn-sm flex-grow-1">
+                  <i class="fa-solid fa-eye me-1"></i>View Profile
+                </a>
+              {% else %}
+                <div class="btn btn-outline-secondary btn-sm flex-grow-1 disabled text-muted text-center"
+                     style="font-size:.8rem">
+                  <i class="fa-solid fa-user-shield me-1"></i>Staff Account
+                </div>
+              {% endif %}
+
+              {% if staff_access.members %}
+              <form method="post"
+                    action="{% url 'library:admin_member_toggle' user.id %}"
+                    data-confirm-title="{% if user.is_active %}Disable Account{% else %}Enable Account{% endif %}"
+                    data-confirm-body="{% if user.is_active %}Disable {{ user.get_full_name }}'s account?{% else %}Re-enable {{ user.get_full_name }}'s account?{% endif %}"
+                    data-confirm-ok="{% if user.is_active %}Disable{% else %}Enable{% endif %}"
+                    data-confirm-class="{% if user.is_active %}btn btn-danger{% else %}btn btn-success{% endif %}">
                 {% csrf_token %}
                 <button type="submit"
-                        class="btn btn-sm {% if member.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
-                        title="{% if member.is_active %}Disable{% else %}Enable{% endif %}">
-                  {% if member.is_active %}
+                        class="btn btn-sm {% if user.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                        title="{% if user.is_active %}Disable{% else %}Enable{% endif %} account">
+                  {% if user.is_active %}
                     <i class="fa-solid fa-ban"></i>
                   {% else %}
                     <i class="fa-solid fa-circle-check"></i>
                   {% endif %}
                 </button>
               </form>
+              {% endif %}
             </div>
-
           </div>
         </div>
       </div>
@@ -103,11 +198,11 @@
 
   <!-- Pagination -->
   {% if page_obj.has_other_pages %}
-    <nav aria-label="Members pagination">
+    <nav aria-label="Users pagination">
       <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
           <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ query }}">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&role={{ role_filter }}&q={{ query }}">
               <i class="fa-solid fa-chevron-left"></i>
             </a>
           </li>
@@ -117,13 +212,15 @@
             <li class="page-item active"><span class="page-link">{{ num }}</span></li>
           {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="page-item">
-              <a class="page-link" href="?page={{ num }}&q={{ query }}">{{ num }}</a>
+              <a class="page-link" href="?page={{ num }}&role={{ role_filter }}&q={{ query }}">
+                {{ num }}
+              </a>
             </li>
           {% endif %}
         {% endfor %}
         {% if page_obj.has_next %}
           <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ query }}">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&role={{ role_filter }}&q={{ query }}">
               <i class="fa-solid fa-chevron-right"></i>
             </a>
           </li>
@@ -135,7 +232,8 @@
 {% else %}
   <div class="text-center py-5">
     <i class="fa-solid fa-users fa-3x text-muted mb-3 d-block"></i>
-    <p class="text-muted">No members found.</p>
+    <h5 class="fw-semibold">No users found</h5>
+    <p class="text-muted">Try changing the filter or search term.</p>
   </div>
 {% endif %}
 

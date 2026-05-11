@@ -341,7 +341,7 @@ function initBorrowForm() {
 // Admin forms — required field validation (book / author / category)
 // ===========================================================================
 function initAdminForms() {
-  ["bookForm", "authorForm", "categoryForm"].forEach((id) => {
+  ["bookForm", "authorForm", "categoryForm", "staffForm"].forEach((id) => {
     const form = document.getElementById(id);
     if (!form) return;
     form.addEventListener("submit", (e) => {

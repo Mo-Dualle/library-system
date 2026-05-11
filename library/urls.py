@@ -88,6 +88,13 @@ urlpatterns = [
     path("admin-panel/loans/<int:borrow_id>/return/", views.admin_mark_returned_view, name="admin_mark_returned"),
 
     # ------------------------------------------------------------------
+    # Admin — Fines, Reservations, Staff creation
+    # ------------------------------------------------------------------
+    path("admin-panel/fines/",          views.admin_fine_list_view,        name="admin_fine_list"),
+    path("admin-panel/reservations/",   views.admin_reservation_list_view, name="admin_reservation_list"),
+    path("admin-panel/staff/create/",   views.admin_create_staff_view,     name="admin_create_staff"),
+
+    # ------------------------------------------------------------------
     # Inline JSON — called from book form modals
     # ------------------------------------------------------------------
     path("admin-panel/authors/create-json/",    views.author_create_json,   name="author_create_json"),

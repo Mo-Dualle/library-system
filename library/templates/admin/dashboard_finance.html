@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block title %}Finance dashboard — LibraryApp{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge bg-success rounded-pill px-3 py-2"><i class="fa-solid fa-coins me-1"></i>Finance</span>
+    </div>
+    <h4 class="fw-bold mb-0">Finance dashboard</h4>
+    <small class="text-muted">Fines and payment overview</small>
+  </div>
+  <a href="{% url 'library:book_list' %}" class="btn btn-outline-success btn-sm">
+    <i class="fa-solid fa-eye me-1"></i>Public site
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <a href="{% url 'library:admin_fine_list' %}?status=unpaid" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover
+           {% if unpaid_fines_count %}border-danger border{% endif %}">
+        <div class="h2 fw-bold mb-0 {% if unpaid_fines_count %}text-danger{% else %}text-dark{% endif %}">
+          {{ unpaid_fines_count }}
+        </div>
+        <small class="text-muted">Unpaid fines</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card border-0 shadow-sm text-center p-3 h-100 bg-light">
+      <div class="h2 fw-bold text-success mb-0">${{ outstanding_fines_total }}</div>
+      <small class="text-muted">Outstanding balance</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <a href="{% url 'library:admin_fine_list' %}?status=paid" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
+        <div class="h2 fw-bold text-dark mb-0">{{ paid_fines_count }}</div>
+        <small class="text-muted">Settled records</small>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="d-flex gap-2 flex-wrap mb-4">
+  <a href="{% url 'library:admin_fine_list' %}" class="btn btn-success btn-sm">
+    <i class="fa-solid fa-list me-1"></i>All fines
+  </a>
+  <a href="{% url 'library:admin_fine_list' %}?status=unpaid" class="btn btn-outline-danger btn-sm">
+    <i class="fa-solid fa-triangle-exclamation me-1"></i>Unpaid
+  </a>
+  <a href="{% url 'library:admin_fine_list' %}?status=paid" class="btn btn-outline-success btn-sm">
+    <i class="fa-solid fa-check me-1"></i>Paid
+  </a>
+</div>
+
+<h5 class="fw-semibold mb-3">Recent fines</h5>
+
+{% if recent_fine_list %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-success">
+        <tr>
+          <th>Member</th>
+          <th>Book</th>
+          <th>Due</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fine in recent_fine_list %}
+          <tr>
+            <td>
+              <a href="{% url 'library:admin_member_detail' fine.member.id %}" class="fw-semibold text-decoration-none text-dark">
+                {{ fine.member.get_full_name }}
+              </a>
+              <div class="text-muted small">{{ fine.member.email }}</div>
+            </td>
+            <td class="fw-semibold">{{ fine.borrow.book.title }}</td>
+            <td>{{ fine.created_at|date:"M d, Y" }}</td>
+            <td>
+              <span class="text-danger fw-semibold">${{ fine.amount_due }}</span>
+              <span class="text-muted small">/ paid ${{ fine.amount_paid }}</span>
+            </td>
+            <td>
+              {% if fine.is_settled %}
+                <span class="badge bg-success">Settled</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Outstanding</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <a href="{% url 'library:admin_fine_list' %}" class="btn btn-link btn-sm ps-0 mt-1">
+    View all fines <i class="fa-solid fa-arrow-right ms-1"></i>
+  </a>
+{% else %}
+  <div class="text-center py-4 border rounded bg-white shadow-sm">
+    <i class="fa-solid fa-receipt fa-2x text-muted mb-2 d-block"></i>
+    <p class="text-muted mb-0">No fines recorded yet.</p>
+  </div>
+{% endif %}
+
+<style>
+  .card-hover { transition: transform .15s ease, box-shadow .15s ease; cursor: pointer; }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.10) !important; }
+</style>
+
+{% endblock %}

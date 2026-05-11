@@ -1,0 +1,146 @@
+{% extends "layout.html" %}
+{% block title %}Librarian dashboard — LibraryApp{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge bg-primary rounded-pill px-3 py-2"><i class="fa-solid fa-books me-1"></i>Librarian</span>
+    </div>
+    <h4 class="fw-bold mb-0">Librarian dashboard</h4>
+    <small class="text-muted">Catalog, loans &amp; reservations</small>
+  </div>
+  <a href="{% url 'library:book_list' %}" class="btn btn-outline-primary btn-sm">
+    <i class="fa-solid fa-eye me-1"></i>Public site
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <a href="{% url 'library:admin_book_list' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
+        <div class="h2 fw-bold text-dark mb-0">{{ total_books_count }}</div>
+        <small class="text-muted">Books</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{% url 'library:admin_loan_list' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
+        <div class="h2 fw-bold text-dark mb-0">{{ active_borrows_count }}</div>
+        <small class="text-muted">Active borrows</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{% url 'library:admin_loan_list' %}?status=overdue" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover {% if overdue_borrows_count %}border-danger border{% endif %}">
+        <div class="h2 fw-bold mb-0 {% if overdue_borrows_count %}text-danger{% else %}text-dark{% endif %}">
+          {{ overdue_borrows_count }}
+        </div>
+        <small class="text-muted">Overdue</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{% url 'library:admin_reservation_list' %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm text-center p-3 h-100 card-hover">
+        <div class="h2 fw-bold text-dark mb-0">{{ pending_reservations_count }}</div>
+        <small class="text-muted">Reservations</small>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="d-flex gap-2 flex-wrap mb-4">
+  <a href="{% url 'library:admin_book_list' %}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-books me-1"></i>Books
+  </a>
+  <a href="{% url 'library:admin_book_create' %}" class="btn btn-outline-primary btn-sm">
+    <i class="fa-solid fa-plus me-1"></i>Add book
+  </a>
+  <a href="{% url 'library:admin_loan_list' %}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-list-check me-1"></i>Loans
+  </a>
+  <a href="{% url 'library:admin_loan_list' %}?status=overdue" class="btn btn-danger btn-sm">
+    <i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue
+  </a>
+  <a href="{% url 'library:admin_reservation_list' %}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-clock me-1"></i>Reservations
+  </a>
+</div>
+
+<h5 class="fw-semibold mb-3">Recent loans</h5>
+
+{% if recent_borrow_list %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-primary">
+        <tr>
+          <th>Member</th>
+          <th>Book</th>
+          <th>Due date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for borrow in recent_borrow_list %}
+          <tr>
+            <td>
+              <a href="{% url 'library:admin_member_detail' borrow.member.id %}"
+                 class="fw-semibold text-decoration-none text-dark">
+                {{ borrow.member.get_full_name }}
+              </a>
+              <div class="text-muted small">{{ borrow.member.email }}</div>
+            </td>
+            <td class="fw-semibold">{{ borrow.book.title }}</td>
+            <td>{{ borrow.due_date|date:"M d, Y" }}</td>
+            <td>
+              {% if borrow.status == 'returned' %}
+                <span class="badge bg-secondary">Returned</span>
+              {% elif borrow.status == 'overdue' %}
+                <span class="badge bg-danger">Overdue</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Borrowed</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if borrow.status != 'returned' %}
+                <form method="post"
+                      action="{% url 'library:admin_mark_returned' borrow.id %}"
+                      data-confirm-title="Mark Returned"
+                      data-confirm-body="Confirm return?"
+                      data-confirm-ok="Confirm"
+                      data-confirm-class="btn btn-dark">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Return
+                  </button>
+                </form>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <a href="{% url 'library:admin_loan_list' %}" class="btn btn-link btn-sm ps-0 mt-1">
+    View all loans <i class="fa-solid fa-arrow-right ms-1"></i>
+  </a>
+{% else %}
+  <div class="text-center py-4 border rounded bg-white shadow-sm">
+    <i class="fa-solid fa-inbox fa-2x text-muted mb-2 d-block"></i>
+    <p class="text-muted mb-0">No borrow activity yet.</p>
+  </div>
+{% endif %}
+
+<style>
+  .card-hover { transition: transform .15s ease, box-shadow .15s ease; cursor: pointer; }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.10) !important; }
+</style>
+
+{% endblock %}

@@ -56,13 +56,13 @@
       <ul class="navbar-nav ms-auto align-items-center">
         {% if user.is_authenticated %}
 
-          {% if user.is_staff %}
+          {% if staff_access and staff_access.portal %}
             <li class="nav-item">
               <a class="nav-link" href="{% url 'library:admin_dashboard' %}">
-                <i class="fa-solid fa-gauge me-1"></i>Admin Panel
+                <i class="fa-solid fa-gauge me-1"></i>Staff dashboard
               </a>
             </li>
-          {% else %}
+          {% elif not staff_access %}
             <li class="nav-item">
               <a class="nav-link" href="{% url 'library:dashboard' %}">
                 <i class="fa-solid fa-gauge me-1"></i>Dashboard
@@ -75,17 +75,18 @@
             <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 p-0 pe-2"
                href="#" id="userDropdown" role="button"
                data-bs-toggle="dropdown" aria-expanded="false">
-              {% if user.avatar %}
+              <!-- Avatar with fallback to initials if image missing -->
+              <div style="position:relative;width:34px;height:34px">
                 <img src="{{ user.avatar.url }}"
                      alt="{{ user.get_full_name }}"
                      class="rounded-circle border border-secondary"
-                     style="width:34px;height:34px;object-fit:cover"/>
-              {% else %}
+                     style="width:34px;height:34px;object-fit:cover"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
                 <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center border border-secondary"
-                     style="width:34px;height:34px;font-size:.85rem;font-weight:700;color:#fff">
+                     style="width:34px;height:34px;font-size:.85rem;font-weight:700;color:#fff;display:none;position:absolute;top:0;left:0">
                   {{ user.first_name|first|upper }}
                 </div>
-              {% endif %}
+              </div>
               <span class="d-none d-lg-inline text-white" style="font-size:.9rem">
                 {{ user.first_name }}
               </span>
@@ -97,15 +98,16 @@
               <!-- User info header -->
               <li class="px-3 py-2 border-bottom">
                 <div class="d-flex align-items-center gap-2">
-                  {% if user.avatar %}
+                  <!-- Dropdown header avatar with fallback -->
+                  <div style="position:relative;width:40px;height:40px;flex-shrink:0">
                     <img src="{{ user.avatar.url }}" alt=""
-                         class="rounded-circle" style="width:40px;height:40px;object-fit:cover"/>
-                  {% else %}
+                         class="rounded-circle" style="width:40px;height:40px;object-fit:cover"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
                     <div class="rounded-circle bg-dark d-flex align-items-center justify-content-center"
-                         style="width:40px;height:40px;font-size:1rem;font-weight:700;color:#fff">
+                         style="width:40px;height:40px;font-size:1rem;font-weight:700;color:#fff;display:none;position:absolute;top:0;left:0">
                       {{ user.first_name|first|upper }}
                     </div>
-                  {% endif %}
+                  </div>
                   <div class="overflow-hidden">
                     <div class="fw-semibold text-truncate" style="font-size:.9rem">
                       {{ user.get_full_name }}
@@ -117,7 +119,58 @@
                 </div>
               </li>
 
-              {% if not user.is_staff %}
+              {% if staff_access %}
+                {% if staff_access.portal %}
+                  <li>
+                    <a class="dropdown-item py-2" href="{% url 'library:admin_dashboard' %}">
+                      <i class="fa-solid fa-gauge me-2 text-muted"></i>Staff dashboard
+                    </a>
+                  </li>
+                {% endif %}
+                {% if staff_access.catalog %}
+                  <li>
+                    <a class="dropdown-item py-2" href="{% url 'library:admin_book_list' %}">
+                      <i class="fa-solid fa-books me-2 text-muted"></i>Manage Books
+                    </a>
+                  </li>
+                {% endif %}
+                {% if staff_access.members %}
+                  <li>
+                    <a class="dropdown-item py-2" href="{% url 'library:admin_member_list' %}">
+                      <i class="fa-solid fa-users me-2 text-muted"></i>Users
+                    </a>
+                  </li>
+                {% endif %}
+                {% if staff_access.circulation %}
+                  <li>
+                    <a class="dropdown-item py-2" href="{% url 'library:admin_loan_list' %}">
+                      <i class="fa-solid fa-list-check me-2 text-muted"></i>Loans
+                    </a>
+                  </li>
+                {% endif %}
+                {% if staff_access.fines %}
+                  <li>
+                    <a class="dropdown-item py-2" href="{% url 'library:admin_fine_list' %}">
+                      <i class="fa-solid fa-triangle-exclamation me-2 text-muted"></i>Fines
+                    </a>
+                  </li>
+                {% endif %}
+                {% if staff_access.circulation %}
+                  <li>
+                    <a class="dropdown-item py-2" href="{% url 'library:admin_reservation_list' %}">
+                      <i class="fa-solid fa-clock me-2 text-muted"></i>Reservations
+                    </a>
+                  </li>
+                {% endif %}
+                {% if staff_access.staff_accounts %}
+                  <li>
+                    <a class="dropdown-item py-2" href="{% url 'library:admin_create_staff' %}">
+                      <i class="fa-solid fa-user-shield me-2 text-muted"></i>Add staff
+                    </a>
+                  </li>
+                {% endif %}
+                <li><hr class="dropdown-divider my-1"></li>
+              {% else %}
                 <li>
                   <a class="dropdown-item py-2" href="{% url 'library:profile' %}">
                     <i class="fa-solid fa-user me-2 text-muted"></i>My Profile

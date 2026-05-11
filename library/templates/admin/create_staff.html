@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+{% block title %}Add staff — LibraryApp{% endblock %}
+
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{% url 'library:admin_dashboard' %}">Dashboard</a>
+    </li>
+    <li class="breadcrumb-item active">Add staff</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="avatar-circle" style="width:48px;height:48px;font-size:1.2rem;background:#212529;color:#fbbf24">
+        <i class="fa-solid fa-user-shield" style="font-size:1rem"></i>
+      </div>
+      <div>
+        <h4 class="fw-bold mb-0">Add staff account</h4>
+        <small class="text-muted">Create Librarian and/or Finance Officer accounts</small>
+      </div>
+    </div>
+
+    <div class="alert alert-light border shadow-sm d-flex gap-2 mb-4">
+      <i class="fa-solid fa-circle-info mt-1 text-primary flex-shrink-0"></i>
+      <div class="small">
+        This screen creates <strong>role-based staff</strong> accounts only.
+        Legacy full-admin accounts and User Manager accounts are not created here.
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form id="staffForm"
+              method="post"
+              action="{% url 'library:admin_create_staff' %}"
+              novalidate>
+          {% csrf_token %}
+
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label for="first_name" class="form-label fw-semibold">First name *</label>
+              <input type="text" class="form-control" id="first_name" name="first_name"
+                     value="{{ form_data.first_name|default:'' }}"
+                     placeholder="Jane" required autofocus/>
+              <div class="invalid-feedback">First name is required.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="last_name" class="form-label fw-semibold">Last name *</label>
+              <input type="text" class="form-control" id="last_name" name="last_name"
+                     value="{{ form_data.last_name|default:'' }}"
+                     placeholder="Smith" required/>
+              <div class="invalid-feedback">Last name is required.</div>
+            </div>
+
+            <div class="col-12">
+              <label for="email" class="form-label fw-semibold">Email *</label>
+              <input type="email" class="form-control" id="email" name="email"
+                     value="{{ form_data.email|default:'' }}"
+                     placeholder="jane@library.com" required/>
+              <div class="invalid-feedback">Valid email is required.</div>
+            </div>
+
+            <div class="col-12">
+              <label for="username" class="form-label fw-semibold">Username *</label>
+              <input type="text" class="form-control" id="username" name="username"
+                     value="{{ form_data.username|default:'' }}"
+                     placeholder="janesmith" required/>
+              <div class="invalid-feedback">Username is required.</div>
+            </div>
+
+            <div class="col-12">
+              <label for="phone" class="form-label fw-semibold">
+                Phone <span class="text-muted fw-normal">(optional)</span>
+              </label>
+              <input type="tel" class="form-control" id="phone" name="phone"
+                     value="{{ form_data.phone|default:'' }}"
+                     placeholder="+1 234 567 8900"/>
+            </div>
+
+            <div class="col-md-6">
+              <label for="password1" class="form-label fw-semibold">Password *</label>
+              <input type="password" class="form-control" id="password1" name="password1"
+                     placeholder="Min 8 characters" required/>
+              <div class="invalid-feedback">Minimum 8 characters.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="password2" class="form-label fw-semibold">Confirm password *</label>
+              <input type="password" class="form-control" id="password2" name="password2"
+                     placeholder="Repeat password" required/>
+              <div class="invalid-feedback">Passwords do not match.</div>
+            </div>
+
+          </div>
+
+          <hr class="my-4"/>
+
+          <p class="fw-semibold mb-2">Staff roles</p>
+          <p class="text-muted small mb-3">Choose one or both roles for this account.</p>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <div class="form-check p-3 border rounded h-100 bg-light">
+                <input class="form-check-input" type="checkbox" name="role_librarian" id="role_librarian"
+                       value="on" {% if form_data and form_data.role_librarian %}checked{% endif %}/>
+                <label class="form-check-label fw-semibold" for="role_librarian">
+                  <i class="fa-solid fa-books text-primary me-1"></i> Librarian
+                </label>
+                <div class="small text-muted mt-1">Catalog, loans, reservations</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-check p-3 border rounded h-100 bg-light">
+                <input class="form-check-input" type="checkbox" name="role_finance_officer" id="role_finance_officer"
+                       value="on" {% if form_data and form_data.role_finance_officer %}checked{% endif %}/>
+                <label class="form-check-label fw-semibold" for="role_finance_officer">
+                  <i class="fa-solid fa-coins text-success me-1"></i> Finance Officer
+                </label>
+                <div class="small text-muted mt-1">Fines and payments overview</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'library:admin_dashboard' %}" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+            <button type="submit" class="btn btn-dark">
+              <i class="fa-solid fa-user-shield me-1"></i>Create staff account
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

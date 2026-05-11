@@ -6,7 +6,13 @@
 <!-- Breadcrumb -->
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="{% url 'library:admin_member_list' %}">Members</a></li>
+    <li class="breadcrumb-item">
+      {% if can_manage_members %}
+        <a href="{% url 'library:admin_member_list' %}">Users</a>
+      {% else %}
+        <a href="{% url 'library:admin_dashboard' %}">Dashboard</a>
+      {% endif %}
+    </li>
     <li class="breadcrumb-item active">{{ member.get_full_name }}</li>
   </ol>
 </nav>
@@ -42,6 +48,7 @@
       </div>
 
       <!-- Toggle action -->
+      {% if can_manage_members %}
       <div class="col-auto">
         <form method="post" action="{% url 'library:admin_member_toggle' member.id %}"
               data-confirm="{% if member.is_active %}Disable Account|Disable {{ member.get_full_name }}'s account?{% else %}Enable Account|Re-enable this account?{% endif %}">
@@ -56,6 +63,7 @@
           </button>
         </form>
       </div>
+      {% endif %}
 
     </div>
   </div>
